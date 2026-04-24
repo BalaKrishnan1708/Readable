@@ -43,7 +43,15 @@ const screenToViewport = (sample: GazeFlowSample): { x: number; y: number } => {
 };
 
 export const DiagnosticPage = () => {
-  const { currentSession, sessionResults, setCurrentSession, setSessionResults } = sessionStore();
+  const {
+    currentSession,
+    sessionResults,
+    eyeTrackingFocusEvents,
+    setCurrentSession,
+    setSessionResults,
+    addEyeTrackingFocusEvent,
+    clearEyeTrackingFocusEvents,
+  } = sessionStore();
   const setStudentProfile = profileStore((state) => state.setStudentProfile);
   const [appKey] = useState(
     import.meta.env.VITE_READABLE_EYE_TRACKER_APP_KEY ??
@@ -76,6 +84,7 @@ export const DiagnosticPage = () => {
       setActiveWordIndex(null);
       setGazeDot(null);
       setFocusedWordCounts({});
+      clearEyeTrackingFocusEvents();
       tracker.clearSamples();
       toast.success("Diagnostic passage ready.");
     },
@@ -144,11 +153,15 @@ export const DiagnosticPage = () => {
     }
 
     setActiveWordIndex(wordIndex);
+    addEyeTrackingFocusEvent({
+      wordIndex,
+      timestamp: tracker.latestSample.receivedAt,
+    });
     setFocusedWordCounts((current) => ({
       ...current,
       [wordIndex]: (current[wordIndex] ?? 0) + 1,
     }));
-  }, [tracker.latestSample]);
+  }, [addEyeTrackingFocusEvent, tracker.latestSample]);
 
   const buildEyeTrackingPayload = (): Record<string, unknown> => {
     const samples = tracker.samples.slice(-180).map((sample) => ({
@@ -163,6 +176,7 @@ export const DiagnosticPage = () => {
       connection_status: tracker.status,
       sample_count: tracker.samples.length,
       focused_word_hits: topFocusedWords,
+      focus_events: eyeTrackingFocusEvents,
       active_word_index: activeWordIndex,
       screen_metrics: {
         screen_x: window.screenX,
@@ -251,7 +265,7 @@ export const DiagnosticPage = () => {
             <div className="mt-3 grid min-h-0 flex-1 gap-3 lg:grid-cols-[1fr,320px]">
               <div
                 ref={passageRef}
-                className="relative min-h-0 overflow-hidden rounded-[2rem] border border-white/60 bg-white/72 px-6 py-6 shadow-soft backdrop-blur sm:px-10 sm:py-8 lg:px-14 lg:py-10"
+                className="relative min-h-0 overflow-y-auto rounded-[2rem] border border-white/60 bg-white/72 px-6 py-6 shadow-soft backdrop-blur sm:px-10 sm:py-8 lg:px-14 lg:py-10"
               >
                 {gazeDot ? (
                   <div
@@ -260,14 +274,14 @@ export const DiagnosticPage = () => {
                   />
                 ) : null}
 
-                <div className="flex h-full items-center justify-center">
-                  <div className="w-full max-w-6xl space-y-6 text-center text-[clamp(1.7rem,2.9vw,2.8rem)] leading-[2.15] tracking-[0.01em] text-ink">
+                <div className="flex min-h-full items-start justify-center py-2">
+                  <div className="w-full max-w-6xl space-y-8 text-center text-[clamp(1.9rem,3vw,3rem)] leading-[2.35] tracking-[0.012em] text-ink">
                     {(() => {
                       let globalWordIndex = 0;
                       return passageParagraphs.map((paragraph, paragraphIndex) => (
                         <p
                           key={`${paragraphIndex}-${paragraph[0] ?? "paragraph"}`}
-                          className="mx-auto max-w-[34ch] lg:max-w-[38ch]"
+                          className="mx-auto max-w-[36ch] lg:max-w-[40ch]"
                         >
                           {paragraph.map((word) => {
                             const currentIndex = globalWordIndex;
@@ -277,7 +291,7 @@ export const DiagnosticPage = () => {
                               <span
                                 key={`${currentIndex}-${word}`}
                                 data-word-index={currentIndex}
-                                className={`mx-[0.14em] inline-block rounded-xl px-[0.18em] py-[0.08em] transition ${
+                                className={`mx-[0.14em] my-[0.06em] inline-flex max-w-full items-center justify-center rounded-xl px-[0.2em] py-[0.1em] align-baseline break-words transition ${
                                   activeWordIndex === currentIndex
                                     ? "bg-sea text-white"
                                     : "bg-white/60"
