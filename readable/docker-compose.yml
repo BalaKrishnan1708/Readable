@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: readable
+      POSTGRES_USER: readable
+      POSTGRES_PASSWORD: readable
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+  backend:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://readable:readable@postgres:5432/readable}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-replace-this-secret}
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    command: >
+      sh -c "npm install &&
+      npm run dev"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
