@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
+import { useReadableEyeTracker } from "../hooks/useGazeFlow";
 import { startDiagnostic, submitDiagnostic } from "../api/sessions";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { RecordButton } from "../components/RecordButton";
@@ -9,10 +11,58 @@ import { TextReader } from "../components/TextReader";
 import { getErrorMessage } from "../lib/errors";
 import { profileStore } from "../stores/profileStore";
 import { sessionStore } from "../stores/sessionStore";
+import type { GazeFlowSample } from "../types/eyeTracking";
+
+const sentenceSplitPattern = /(?<=[.!?])\s+/;
+
+const buildParagraphs = (passage: string): string[][] => {
+  const sentences = passage
+    .split(sentenceSplitPattern)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  const grouped: string[][] = [];
+  for (let index = 0; index < sentences.length; index += 2) {
+    const chunk = sentences.slice(index, index + 2).join(" ");
+    grouped.push(chunk.split(/\s+/).filter(Boolean));
+  }
+
+  return grouped;
+};
+
+const screenToViewport = (sample: GazeFlowSample): { x: number; y: number } => {
+  const horizontalChrome = Math.max(window.outerWidth - window.innerWidth, 0);
+  const verticalChrome = Math.max(window.outerHeight - window.innerHeight, 0);
+  const sideBorder = horizontalChrome / 2;
+  const topChrome = Math.max(verticalChrome - sideBorder, 0);
+
+  return {
+    x: sample.GazeX - window.screenX - sideBorder,
+    y: sample.GazeY - window.screenY - topChrome,
+  };
+};
 
 export const DiagnosticPage = () => {
   const { currentSession, sessionResults, setCurrentSession, setSessionResults } = sessionStore();
   const setStudentProfile = profileStore((state) => state.setStudentProfile);
+  const [appKey] = useState(
+    import.meta.env.VITE_READABLE_EYE_TRACKER_APP_KEY ??
+      import.meta.env.VITE_GAZEFLOW_APP_KEY ??
+      "AppKeyTrial",
+  );
+  const [port] = useState(
+    import.meta.env.VITE_READABLE_EYE_TRACKER_PORT ??
+      import.meta.env.VITE_GAZEFLOW_PORT ??
+      "43333",
+  );
+  const [activeWordIndex, setActiveWordIndex] = useState<number | null>(null);
+  const [gazeDot, setGazeDot] = useState<{ x: number; y: number } | null>(null);
+  const [focusedWordCounts, setFocusedWordCounts] = useState<Record<number, number>>({});
+  const passageRef = useRef<HTMLDivElement | null>(null);
+  const tracker = useReadableEyeTracker({
+    appKey,
+    port: Number.parseInt(port, 10) || 43333,
+  });
 
   const startMutation = useMutation({
     mutationFn: startDiagnostic,
@@ -23,13 +73,17 @@ export const DiagnosticPage = () => {
         expectedText: response.expected_text,
       });
       setSessionResults(null);
+      setActiveWordIndex(null);
+      setGazeDot(null);
+      setFocusedWordCounts({});
+      tracker.clearSamples();
       toast.success("Diagnostic passage ready.");
     },
   });
 
   const submitMutation = useMutation({
-    mutationFn: (file: File) =>
-      submitDiagnostic(currentSession?.sessionId ?? 0, file, { cursor_path: [2, 4, 8, 14] }),
+    mutationFn: ({ file, eyePayload }: { file: File; eyePayload: Record<string, unknown> }) =>
+      submitDiagnostic(currentSession?.sessionId ?? 0, file, eyePayload),
     onSuccess: (response) => {
       setSessionResults(response.result);
       setStudentProfile(response.profile);
@@ -38,44 +92,252 @@ export const DiagnosticPage = () => {
   });
 
   const passage = currentSession?.expectedText ?? "";
+  const passageParagraphs = useMemo(() => buildParagraphs(passage), [passage]);
+  const passageWords = useMemo(
+    () => passage.split(/\s+/).filter(Boolean).map((word) => word.replace(/[.,!?]/g, "")),
+    [passage],
+  );
+  const topFocusedWords = useMemo(
+    () =>
+      Object.entries(focusedWordCounts)
+        .map(([index, count]) => ({
+          word: passageWords[Number(index)] ?? `Word ${Number(index) + 1}`,
+          count,
+        }))
+        .sort((left, right) => right.count - left.count)
+        .slice(0, 5),
+    [focusedWordCounts, passageWords],
+  );
+
+  useEffect(() => {
+    if (!tracker.latestSample || !passageRef.current) {
+      return;
+    }
+
+    const viewport = screenToViewport(tracker.latestSample);
+    const rect = passageRef.current.getBoundingClientRect();
+    const insidePassage =
+      viewport.x >= rect.left &&
+      viewport.x <= rect.right &&
+      viewport.y >= rect.top &&
+      viewport.y <= rect.bottom;
+
+    setGazeDot(
+      insidePassage
+        ? {
+            x: viewport.x - rect.left,
+            y: viewport.y - rect.top,
+          }
+        : null,
+    );
+
+    const element = document.elementFromPoint(viewport.x, viewport.y) as HTMLElement | null;
+    const wordElement = element?.closest<HTMLElement>("[data-word-index]");
+
+    if (!wordElement) {
+      return;
+    }
+
+    const wordIndex = Number(wordElement.dataset.wordIndex);
+    if (Number.isNaN(wordIndex)) {
+      return;
+    }
+
+    setActiveWordIndex(wordIndex);
+    setFocusedWordCounts((current) => ({
+      ...current,
+      [wordIndex]: (current[wordIndex] ?? 0) + 1,
+    }));
+  }, [tracker.latestSample]);
+
+  const buildEyeTrackingPayload = (): Record<string, unknown> => {
+    const samples = tracker.samples.slice(-180).map((sample) => ({
+      ...sample,
+      viewport: screenToViewport(sample),
+    }));
+
+    return {
+      provider: "readable_local_eye_tracker",
+      source: "local_webcam_service",
+      authorization_status: tracker.authorizationStatus,
+      connection_status: tracker.status,
+      sample_count: tracker.samples.length,
+      focused_word_hits: topFocusedWords,
+      active_word_index: activeWordIndex,
+      screen_metrics: {
+        screen_x: window.screenX,
+        screen_y: window.screenY,
+        inner_width: window.innerWidth,
+        inner_height: window.innerHeight,
+        outer_width: window.outerWidth,
+        outer_height: window.outerHeight,
+      },
+      samples,
+    };
+  };
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] bg-hero-radial p-8 shadow-soft">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-sea">Diagnostic Session</p>
-            <h1 className="mt-2 text-3xl font-semibold text-ink">Baseline reading check-in</h1>
-            <p className="mt-3 max-w-2xl text-slate-600">
-              Start a session, read the passage aloud, and review mock speech and attention
-              feedback.
-            </p>
+      {!passage ? (
+        <section className="rounded-[2rem] bg-hero-radial p-8 shadow-soft">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.25em] text-sea">Diagnostic Session</p>
+              <h1 className="mt-2 text-3xl font-semibold text-ink">Baseline reading check-in</h1>
+              <p className="mt-3 max-w-2xl text-slate-600">
+                Start a session, read the passage aloud, and review mock speech and attention
+                feedback.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => startMutation.mutate()}
+              className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              {startMutation.isPending ? "Preparing..." : "Start Diagnostic"}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => startMutation.mutate()}
-            className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            {startMutation.isPending ? "Preparing..." : "Start Diagnostic"}
-          </button>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {startMutation.isError ? <ErrorBanner message={getErrorMessage(startMutation.error)} /> : null}
       {submitMutation.isError ? <ErrorBanner message={getErrorMessage(submitMutation.error)} /> : null}
 
       {passage ? (
-        <section className="space-y-5">
-          <div className="rounded-[2rem] bg-white p-6 shadow-soft">
-            <h2 className="text-lg font-semibold text-ink">Passage</h2>
-            <p className="mt-4 text-lg leading-8 text-slate-700">{passage}</p>
+        <section className="fixed inset-x-0 bottom-0 top-[82px] overflow-hidden bg-[linear-gradient(180deg,#fffaf5_0%,#fff7ed_42%,#f8fafc_100%)]">
+          <div className="flex h-full flex-col px-4 pb-4 pt-3 sm:px-6 lg:px-8">
+            <div className="grid gap-3 rounded-[1.75rem] bg-white/88 p-4 shadow-soft backdrop-blur lg:grid-cols-[1.15fr,0.85fr]">
+              <div className="min-w-0">
+                <p className="text-sm uppercase tracking-[0.25em] text-sea">Readable Eye Tracker</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Full-page reading mode keeps the paragraph large, centered, and stable for local webcam tracking.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
+                <div className="rounded-full bg-mist px-4 py-2 text-sm font-medium text-sea">
+                  Status: {tracker.status}
+                </div>
+                <div className="rounded-full bg-blush px-4 py-2 text-sm font-medium text-ink">
+                  Samples: {tracker.samples.length}
+                </div>
+                <button
+                  type="button"
+                  onClick={tracker.connect}
+                  className="rounded-full bg-sea px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700"
+                >
+                  Start Eye Tracker
+                </button>
+                <button
+                  type="button"
+                  onClick={tracker.disconnect}
+                  className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-sea hover:text-sea"
+                >
+                  Stop Eye Tracker
+                </button>
+                <RecordButton
+                  label="Start Recording"
+                  onStop={async (file) => {
+                    await submitMutation.mutateAsync({
+                      file,
+                      eyePayload: buildEyeTrackingPayload(),
+                    });
+                  }}
+                />
+              </div>
+            </div>
+
+            {tracker.error ? <div className="mt-3"><ErrorBanner message={tracker.error} /></div> : null}
+
+            <div className="mt-3 grid min-h-0 flex-1 gap-3 lg:grid-cols-[1fr,320px]">
+              <div
+                ref={passageRef}
+                className="relative min-h-0 overflow-hidden rounded-[2rem] border border-white/60 bg-white/72 px-6 py-6 shadow-soft backdrop-blur sm:px-10 sm:py-8 lg:px-14 lg:py-10"
+              >
+                {gazeDot ? (
+                  <div
+                    className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sea bg-sea/20"
+                    style={{ left: `${gazeDot.x}px`, top: `${gazeDot.y}px` }}
+                  />
+                ) : null}
+
+                <div className="flex h-full items-center justify-center">
+                  <div className="w-full max-w-6xl space-y-6 text-center text-[clamp(1.7rem,2.9vw,2.8rem)] leading-[2.15] tracking-[0.01em] text-ink">
+                    {(() => {
+                      let globalWordIndex = 0;
+                      return passageParagraphs.map((paragraph, paragraphIndex) => (
+                        <p
+                          key={`${paragraphIndex}-${paragraph[0] ?? "paragraph"}`}
+                          className="mx-auto max-w-[34ch] lg:max-w-[38ch]"
+                        >
+                          {paragraph.map((word) => {
+                            const currentIndex = globalWordIndex;
+                            globalWordIndex += 1;
+
+                            return (
+                              <span
+                                key={`${currentIndex}-${word}`}
+                                data-word-index={currentIndex}
+                                className={`mx-[0.14em] inline-block rounded-xl px-[0.18em] py-[0.08em] transition ${
+                                  activeWordIndex === currentIndex
+                                    ? "bg-sea text-white"
+                                    : "bg-white/60"
+                                }`}
+                              >
+                                {word}
+                              </span>
+                            );
+                          })}
+                        </p>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              <aside className="min-h-0 overflow-hidden rounded-[2rem] border border-white/60 bg-white/88 p-4 shadow-soft backdrop-blur">
+                <div className="grid gap-3">
+                  <div className="rounded-2xl bg-mist p-4">
+                    <p className="text-sm text-slate-500">Local authorization</p>
+                    <p className="mt-2 font-semibold text-ink">
+                      {tracker.authorizationStatus ?? "Waiting for first server message"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+                    <p className="font-semibold text-ink">Latest local gaze packet</p>
+                    <p className="mt-2">
+                      Gaze: {tracker.latestSample ? `${tracker.latestSample.GazeX}, ${tracker.latestSample.GazeY}` : "--"}
+                    </p>
+                    <p className="mt-1">
+                      Head pose: {tracker.latestSample ? `${tracker.latestSample.HeadX}, ${tracker.latestSample.HeadY}, ${tracker.latestSample.HeadZ}` : "--"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-100 text-sm text-slate-600">
+                    <p className="font-semibold text-ink">Recommended setup</p>
+                    <p className="mt-2">Sit centered in front of the webcam and keep your face fully lit.</p>
+                    <p className="mt-2">Readable uses large type, generous line spacing, and a no-scroll reading canvas for tracking stability.</p>
+                  </div>
+
+                  {topFocusedWords.length > 0 ? (
+                    <div className="rounded-2xl bg-amber-50 p-4 text-sm text-slate-700">
+                      <p className="font-semibold text-ink">Most-fixated words</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {topFocusedWords.map((item) => (
+                          <span
+                            key={`${item.word}-${item.count}`}
+                            className="rounded-full bg-white px-3 py-2 text-sm font-medium text-amber-900"
+                          >
+                            {item.word} x{item.count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </aside>
+            </div>
           </div>
-          <RecordButton
-            label="Start Recording"
-            onStop={async (file) => {
-              await submitMutation.mutateAsync(file);
-            }}
-          />
         </section>
       ) : null}
 
