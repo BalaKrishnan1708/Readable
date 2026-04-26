@@ -1,8 +1,5 @@
-import type {
-  StudentProfile,
-  StudentProgress,
-  TeacherStudentSummary,
-} from "../types/profile";
+import type { StudentLessonCard } from "../types/lesson";
+import type { StudentProfile, StudentProgress, TeacherStudentSummary } from "../types/profile";
 import { apiClient } from "./client";
 
 export const getStudentProfile = async (studentId: number): Promise<StudentProfile> => {
@@ -17,5 +14,10 @@ export const getStudentProgress = async (studentId: number): Promise<StudentProg
 
 export const getTeacherStudents = async (): Promise<TeacherStudentSummary[]> => {
   const { data } = await apiClient.get<TeacherStudentSummary[]>("/teacher/students");
+  return data;
+};
+
+export const getStudentLessons = async (studentId: number): Promise<StudentLessonCard[]> => {
+  const { data } = await apiClient.get<StudentLessonCard[]>(`/students/${studentId}/lessons`);
   return data;
 };

@@ -6,7 +6,11 @@ from app.core.database import get_db
 from app.core.deps import require_role
 from app.models import Lesson, PersonalizedContent, StudentProfile, User
 from app.models.lesson import LessonContentType
-from app.schemas.lesson import LessonUploadResponse, PersonalizedContentResponse
+from app.schemas.lesson import (
+    LessonUploadResponse,
+    PersonalizedContentResponse,
+    PhoneticSupportWordResponse,
+)
 from app.stubs import ocr, personalization
 
 
@@ -103,6 +107,7 @@ async def personalize_lesson(
         adapted_content={
             "segments": adapted["segments"],
             "chunk_mode": adapted.get("chunk_mode", "paired-sentences"),
+            "phonetic_support": adapted.get("phonetic_support", {}),
         },
         syllable_breaks=adapted["syllable_breaks"],
         font_size=int(adapted["font_size"]),
@@ -119,6 +124,11 @@ async def personalize_lesson(
         student_id=personalized.student_id,
         segments=list(personalized.adapted_content.get("segments", [])),
         syllable_breaks=personalized.syllable_breaks,
+        phonetic_support={
+            key: PhoneticSupportWordResponse(**value)
+            for key, value in personalized.adapted_content.get("phonetic_support", {}).items()
+            if isinstance(value, dict)
+        },
         font_size=personalized.font_size,
         line_spacing=personalized.spacing,
         chunk_size=personalized.chunk_size,

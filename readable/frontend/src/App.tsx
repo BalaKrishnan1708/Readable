@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { Navbar } from "./components/Navbar";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -10,10 +10,20 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 
-const AppShell = () => (
-  <div className="min-h-screen bg-slate-50">
-    <Navbar />
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+const AppShell = () => {
+  const location = useLocation();
+  const isLessonRoute = location.pathname.startsWith("/lesson/");
+
+  return (
+    <div className={isLessonRoute ? "min-h-screen bg-[#f6f7f2]" : "min-h-screen bg-slate-50"}>
+      {!isLessonRoute ? <Navbar /> : null}
+      <main
+        className={
+          isLessonRoute
+            ? "min-h-screen px-4 py-6 sm:px-6 lg:px-8"
+            : "mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+        }
+      >
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/diagnostic" element={<DiagnosticPage />} />
@@ -22,9 +32,10 @@ const AppShell = () => (
         <Route path="/students/:studentId" element={<StudentDetailPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-    </main>
-  </div>
-);
+      </main>
+    </div>
+  );
+};
 
 export default function App() {
   return (

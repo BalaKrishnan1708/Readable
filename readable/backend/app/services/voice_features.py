@@ -16,16 +16,30 @@ class VoiceMetrics(TypedDict):
     repetition_rate: float
 
 
+def get_audio_duration(
+    audio_bytes: bytes, signal: np.ndarray | None = None, sr: int | None = None
+) -> float:
+    """Helper to get audio duration in seconds from raw bytes or pre-loaded signal."""
+    if signal is not None and sr is not None:
+        return _audio_duration_seconds(signal, sr)
+    signal, sr = _load_audio_signal(audio_bytes)
+    return _audio_duration_seconds(signal, sr)
+
+
 def extract_voice_metrics(
     spoken_text: str,
     expected_text: str,
     errors: object,
     speed_wpm: float,
     audio_bytes: bytes,
+    audio_signal: np.ndarray | None = None,
+    sample_rate: int | None = None,
 ) -> VoiceMetrics:
     words = [token for token in spoken_text.split() if token.strip()]
     expected_word_count = max(len(expected_text.split()), 1)
-    audio_signal, sample_rate = _load_audio_signal(audio_bytes)
+
+    if audio_signal is None or sample_rate is None:
+        audio_signal, sample_rate = _load_audio_signal(audio_bytes)
 
     duration_seconds = _audio_duration_seconds(audio_signal, sample_rate)
     if duration_seconds <= 0 and speed_wpm > 0:
@@ -52,8 +66,14 @@ def extract_voice_metrics(
     }
 
 
-def extract_pitch_variation_hz(audio_bytes: bytes, fallback: float = 28.0) -> float:
-    audio_signal, sample_rate = _load_audio_signal(audio_bytes)
+def extract_pitch_variation_hz(
+    audio_bytes: bytes,
+    fallback: float = 28.0,
+    audio_signal: np.ndarray | None = None,
+    sample_rate: int | None = None,
+) -> float:
+    if audio_signal is None or sample_rate is None:
+        audio_signal, sample_rate = _load_audio_signal(audio_bytes)
     if audio_signal is None or sample_rate is None:
         return fallback
     if audio_signal.size < sample_rate:
@@ -122,6 +142,11 @@ def _pause_stats(audio_signal: np.ndarray | None, sample_rate: int | None) -> tu
         pause_frames += run
 
     return pause_count, pause_frames * frame_ms
+
+
+def load_audio(audio_bytes: bytes) -> tuple[np.ndarray | None, int | None]:
+    """Exposed method to decode audio once and reuse the signal."""
+    return _load_audio_signal(audio_bytes)
 
 
 def _load_audio_signal(audio_bytes: bytes) -> tuple[np.ndarray | None, int | None]:

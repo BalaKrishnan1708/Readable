@@ -39,11 +39,21 @@ export const submitReading = async (
   sessionId: number,
   audioFile: File,
   eyeTrackingPayload: Record<string, unknown>,
+  recovery?: {
+    expectedText?: string;
+    personalizedContentId?: number;
+  },
 ): Promise<ReadingSubmitResponse> => {
   const formData = new FormData();
   formData.append("session_id", String(sessionId));
   formData.append("audio_file", audioFile);
   formData.append("eye_tracking_payload", JSON.stringify(eyeTrackingPayload));
+  if (recovery?.expectedText) {
+    formData.append("expected_text", recovery.expectedText);
+  }
+  if (typeof recovery?.personalizedContentId === "number") {
+    formData.append("personalized_content_id", String(recovery.personalizedContentId));
+  }
   const { data } = await apiClient.post<ReadingSubmitResponse>(
     "/sessions/reading/submit",
     formData,

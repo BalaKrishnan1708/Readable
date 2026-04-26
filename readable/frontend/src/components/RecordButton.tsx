@@ -6,6 +6,7 @@ interface RecordButtonProps {
   label?: string;
   autoStartToken?: number;
   onRecordingStateChange?: (isRecording: boolean) => void;
+  onAudioActivityChange?: (isSilent: boolean) => void;
 }
 
 export interface RecordButtonHandle {
@@ -14,10 +15,66 @@ export interface RecordButtonHandle {
 }
 
 export const RecordButton = forwardRef<RecordButtonHandle, RecordButtonProps>(
-  ({ onStop, label = "Start Recording", autoStartToken, onRecordingStateChange }, ref) => {
+  ({ onStop, label = "Start Recording", autoStartToken, onRecordingStateChange, onAudioActivityChange }, ref) => {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  const stopAudioTracking = () => {
+    if (animationFrameRef.current !== null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    analyserRef.current = null;
+    if (audioContextRef.current) {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    onAudioActivityChange?.(true);
+  };
+
+  const startAudioTracking = (stream: MediaStream) => {
+    if (typeof window === "undefined" || typeof AudioContext === "undefined") {
+      onAudioActivityChange?.(true);
+      return;
+    }
+
+    stopAudioTracking();
+
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.85;
+
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    audioContextRef.current = audioContext;
+    analyserRef.current = analyser;
+
+    const data = new Uint8Array(analyser.fftSize);
+
+    const tick = () => {
+      if (!analyserRef.current) {
+        return;
+      }
+
+      analyserRef.current.getByteTimeDomainData(data);
+      let sumSquares = 0;
+      for (const value of data) {
+        const normalized = (value - 128) / 128;
+        sumSquares += normalized * normalized;
+      }
+      const rms = Math.sqrt(sumSquares / data.length);
+      onAudioActivityChange?.(rms < 0.035);
+      animationFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    tick();
+  };
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
@@ -30,6 +87,7 @@ export const RecordButton = forwardRef<RecordButtonHandle, RecordButtonProps>(
     if (!navigator.mediaDevices || typeof MediaRecorder === "undefined") {
       const fallbackFile = new File(["mock audio"], "mock-audio.webm", { type: "audio/webm" });
       toast("MediaRecorder unavailable, using a simulated recording.");
+      onAudioActivityChange?.(true);
       await onStop(fallbackFile);
       return;
     }
@@ -50,11 +108,13 @@ export const RecordButton = forwardRef<RecordButtonHandle, RecordButtonProps>(
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const file = new File([blob], "reading-session.webm", { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
+        stopAudioTracking();
         setIsRecording(false);
         onRecordingStateChange?.(false);
         await onStop(file);
       };
 
+      startAudioTracking(stream);
       recorder.start();
       setIsRecording(true);
       onRecordingStateChange?.(true);
@@ -63,6 +123,7 @@ export const RecordButton = forwardRef<RecordButtonHandle, RecordButtonProps>(
         type: "audio/webm",
       });
       toast("Microphone access failed, using a simulated recording instead.");
+      stopAudioTracking();
       onRecordingStateChange?.(false);
       await onStop(fallbackFile);
     }
@@ -80,6 +141,8 @@ export const RecordButton = forwardRef<RecordButtonHandle, RecordButtonProps>(
     void startRecording();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartToken]);
+
+  useEffect(() => () => stopAudioTracking(), []);
 
   return (
     <button

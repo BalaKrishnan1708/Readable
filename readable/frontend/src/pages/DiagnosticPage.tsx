@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
-import { useReadableEyeTracker } from "../hooks/useGazeFlow";
 import { startDiagnostic, submitDiagnostic } from "../api/sessions";
 import { ErrorBanner } from "../components/ErrorBanner";
-import { ScoreCard } from "../components/ScoreCard";
-import { TextReader } from "../components/TextReader";
+import { DiagnosticReport } from "../components/DiagnosticReport";
+import { useReadableEyeTracker } from "../hooks/useGazeFlow";
 import { getErrorMessage } from "../lib/errors";
 import { profileStore } from "../stores/profileStore";
 import { sessionStore } from "../stores/sessionStore";
@@ -78,6 +77,9 @@ export const DiagnosticPage = () => {
 
   const startMutation = useMutation({
     mutationFn: startDiagnostic,
+    onMutate: () => {
+      setSessionResults(null);
+    },
     onSuccess: (response) => {
       setCurrentSession({
         sessionId: response.session_id,
@@ -128,8 +130,6 @@ export const DiagnosticPage = () => {
         .slice(0, 5),
     [focusedWordCounts, passageWords],
   );
-  const modelScores = studentProfile?.model_profile_scores ?? {};
-  const hasModelScores = Object.keys(modelScores).length > 0;
 
   useEffect(() => {
     if (!tracker.latestSample || !passageRef.current) {
@@ -272,7 +272,7 @@ export const DiagnosticPage = () => {
               <p className="text-sm uppercase tracking-[0.25em] text-sea">Diagnostic Session</p>
               <h1 className="mt-2 text-3xl font-semibold text-ink">Baseline reading check-in</h1>
               <p className="mt-3 max-w-2xl text-slate-600">
-                Start a session, read the passage aloud, and review mock speech and attention
+                Start a session, read the passage aloud, and review AI-powered speech and attention
                 feedback.
               </p>
             </div>
@@ -287,7 +287,15 @@ export const DiagnosticPage = () => {
         </section>
       ) : null}
 
-      {startMutation.isError ? <ErrorBanner message={getErrorMessage(startMutation.error)} /> : null}
+      {startMutation.isError ? (
+        <ErrorBanner
+          message={
+            getErrorMessage(startMutation.error) === "Invalid token"
+              ? "Your session has expired. Please log out and log back in."
+              : getErrorMessage(startMutation.error)
+          }
+        />
+      ) : null}
       {submitMutation.isError ? <ErrorBanner message={getErrorMessage(submitMutation.error)} /> : null}
 
       {passage ? (
@@ -310,14 +318,16 @@ export const DiagnosticPage = () => {
                 <button
                   type="button"
                   onClick={() => void startTest()}
-                  className="rounded-full bg-sea px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700"
+                  disabled={isRecording || submitMutation.isPending}
+                  className="rounded-full bg-sea px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isRecording ? "Test Running..." : "Start Test"}
                 </button>
                 <button
                   type="button"
                   onClick={() => void stopTest()}
-                  className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-sea hover:text-sea"
+                  disabled={!isRecording || submitMutation.isPending}
+                  className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-sea hover:text-sea disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Stop Test
                 </button>
@@ -329,23 +339,23 @@ export const DiagnosticPage = () => {
             <div className="mt-3 grid min-h-0 flex-1 gap-3 lg:grid-cols-[1fr,320px]">
               <div
                 ref={passageRef}
-                className="relative min-h-0 overflow-y-auto rounded-[2rem] border border-white/60 bg-white/72 px-6 py-6 shadow-soft backdrop-blur sm:px-10 sm:py-8 lg:px-14 lg:py-10"
+                className="relative min-h-0 overflow-y-auto rounded-[2rem] border border-white/60 bg-white/72 px-8 py-8 shadow-soft backdrop-blur sm:px-12 sm:py-10 lg:px-16 lg:py-12"
               >
                 {gazeDot ? (
                   <div
-                    className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sea bg-sea/20"
+                    className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sea bg-sea/20 z-10"
                     style={{ left: `${gazeDot.x}px`, top: `${gazeDot.y}px` }}
                   />
                 ) : null}
 
-                <div className="flex min-h-full items-start justify-center py-2">
-                  <div className="w-full max-w-6xl space-y-8 text-center text-[clamp(1.9rem,3vw,3rem)] leading-[2.35] tracking-[0.012em] text-ink">
+                <div className="flex min-h-full items-start justify-center py-4">
+                  <div className="w-full max-w-3xl space-y-6 text-center text-lg sm:text-xl lg:text-2xl leading-relaxed tracking-wide text-ink font-medium">
                     {(() => {
                       let globalWordIndex = 0;
                       return passageParagraphs.map((paragraph, paragraphIndex) => (
                         <p
                           key={`${paragraphIndex}-${paragraph[0] ?? "paragraph"}`}
-                          className="mx-auto max-w-[36ch] lg:max-w-[40ch]"
+                          className="mx-auto space-y-2"
                         >
                           {paragraph.map((word) => {
                             const currentIndex = globalWordIndex;
@@ -355,10 +365,10 @@ export const DiagnosticPage = () => {
                               <span
                                 key={`${currentIndex}-${word}`}
                                 data-word-index={currentIndex}
-                                className={`mx-[0.14em] my-[0.06em] inline-flex max-w-full items-center justify-center rounded-xl px-[0.2em] py-[0.1em] align-baseline break-words transition ${
+                                className={`inline-block mx-1 px-2 py-1 rounded-lg transition-all duration-200 ${
                                   activeWordIndex === currentIndex
-                                    ? "bg-sea text-white"
-                                    : "bg-white/60"
+                                    ? "bg-sea text-white shadow-md scale-105"
+                                    : "bg-slate-100/60 hover:bg-slate-200/60"
                                 }`}
                               >
                                 {word}
@@ -372,7 +382,7 @@ export const DiagnosticPage = () => {
                 </div>
               </div>
 
-              <aside className="min-h-0 overflow-hidden rounded-[2rem] border border-white/60 bg-white/88 p-4 shadow-soft backdrop-blur">
+              <aside className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/60 bg-white/88 p-4 shadow-soft backdrop-blur">
                 <div className="grid gap-3">
                   <div className="rounded-2xl bg-mist p-4">
                     <p className="text-sm text-slate-500">Local authorization</p>
@@ -383,18 +393,18 @@ export const DiagnosticPage = () => {
 
                   <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
                     <p className="font-semibold text-ink">Latest local gaze packet</p>
-                    <p className="mt-2">
+                    <p className="mt-2 text-xs">
                       Gaze: {tracker.latestSample ? `${tracker.latestSample.GazeX}, ${tracker.latestSample.GazeY}` : "--"}
                     </p>
-                    <p className="mt-1">
+                    <p className="mt-1 text-xs">
                       Head pose: {tracker.latestSample ? `${tracker.latestSample.HeadX}, ${tracker.latestSample.HeadY}, ${tracker.latestSample.HeadZ}` : "--"}
                     </p>
                   </div>
 
                   <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-100 text-sm text-slate-600">
                     <p className="font-semibold text-ink">Recommended setup</p>
-                    <p className="mt-2">Sit centered in front of the webcam and keep your face fully lit.</p>
-                    <p className="mt-2">Readable uses large type, generous line spacing, and a no-scroll reading canvas for tracking stability.</p>
+                    <p className="mt-2 text-xs">Sit centered in front of the webcam and keep your face fully lit.</p>
+                    <p className="mt-2 text-xs">Readable uses large type, generous line spacing, and a no-scroll reading canvas for tracking stability.</p>
                   </div>
 
                   {topFocusedWords.length > 0 ? (
@@ -404,7 +414,7 @@ export const DiagnosticPage = () => {
                         {topFocusedWords.map((item) => (
                           <span
                             key={`${item.word}-${item.count}`}
-                            className="rounded-full bg-white px-3 py-2 text-sm font-medium text-amber-900"
+                            className="rounded-full bg-white px-3 py-2 text-xs font-medium text-amber-900"
                           >
                             {item.word} x{item.count}
                           </span>
@@ -412,6 +422,15 @@ export const DiagnosticPage = () => {
                       </div>
                     </div>
                   ) : null}
+
+                  {submitMutation.isPending && (
+                    <div className="rounded-2xl bg-blue-50 p-4 border border-blue-200">
+                      <p className="text-sm font-semibold text-blue-900">Processing...</p>
+                      <div className="mt-2 h-2 w-full rounded-full bg-blue-200 overflow-hidden">
+                        <div className="h-full bg-blue-500 animate-pulse" style={{ width: "65%" }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </aside>
             </div>
@@ -419,37 +438,9 @@ export const DiagnosticPage = () => {
         </section>
       ) : null}
 
-      {sessionResults ? (
-        <section className="space-y-6">
-          <ScoreCard
-            accuracy={sessionResults.accuracy_pct}
-            wpm={sessionResults.speed_wpm}
-            attention={sessionResults.attention_score}
-          />
-          <div>
-            <h2 className="mb-3 text-xl font-semibold text-ink">Highlighted passage</h2>
-            <TextReader text={[sessionResults.expected_text]} highlights={sessionResults.errors} />
-          </div>
-          <div className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-soft">
-            <h2 className="text-xl font-semibold text-ink">ML Output Profile</h2>
-            {hasModelScores ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {Object.entries(modelScores).map(([name, score]) => (
-                  <div key={name} className="rounded-2xl bg-mist p-4">
-                    <p className="text-sm text-slate-500">{name.replaceAll("_", " ")}</p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{score.toFixed(3)}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-600">
-                Model scores unavailable. Add `dyslexia_profiler.pt` in `backend/profile_model` and rerun the
-                diagnostic test.
-              </p>
-            )}
-          </div>
-        </section>
-      ) : null}
+      {sessionResults && studentProfile && (
+        <DiagnosticReport result={sessionResults} profile={studentProfile} />
+      )}
     </div>
   );
 };

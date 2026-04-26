@@ -20,6 +20,7 @@ async def get_current_user(
     try:
         payload = decode_token(token)
     except ValueError as exc:
+        print(f"[AUTH ERROR] Token decoding failed: {exc}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
     user_id = payload.get("sub")
     if user_id is None:

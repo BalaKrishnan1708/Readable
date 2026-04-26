@@ -19,5 +19,6 @@ class SessionResult(Base):
     hesitation_points: Mapped[list[int]] = mapped_column(JSONB, default=list)
     eye_tracking_data: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     accuracy_pct: Mapped[float] = mapped_column(Float)
+    model_profile_scores: Mapped[dict[str, float]] = mapped_column(JSONB, default=dict)
 
     session = relationship("Session", back_populates="result")

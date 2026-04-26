@@ -31,6 +31,7 @@ class SessionResultPayload(BaseModel):
     re_read_events: list[int]
     avg_fixation_ms: int
     accuracy_pct: float
+    model_profile_scores: dict[str, float] = {}
 
 
 class DiagnosticSubmitResponse(BaseModel):

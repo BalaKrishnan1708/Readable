@@ -12,6 +12,9 @@ class EyeTrackingMetrics(TypedDict):
     regression_count: int
     skipped_words: int
     reading_speed_wpm: float
+    skip_events: list[int]
+    re_read_events: list[int]
+    attention_score: float
 
 
 def extract_eye_tracking_metrics(
@@ -24,6 +27,9 @@ def extract_eye_tracking_metrics(
             "regression_count": 0,
             "skipped_words": max(expected_word_count, 0),
             "reading_speed_wpm": 0.0,
+            "skip_events": list(range(expected_word_count)) if expected_word_count > 0 else [],
+            "re_read_events": [],
+            "attention_score": 0.0,
         }
 
     # Defensive sort to support payloads that may arrive unordered.
@@ -45,11 +51,15 @@ def extract_eye_tracking_metrics(
             "regression_count": 0,
             "skipped_words": max(expected_word_count, 0),
             "reading_speed_wpm": 0.0,
+            "skip_events": list(range(expected_word_count)) if expected_word_count > 0 else [],
+            "re_read_events": [],
+            "attention_score": 0.0,
         }
 
     fixation_durations: list[int] = []
     saccade_jumps: list[int] = []
     regression_count = 0
+    re_read_events: set[int] = set()
 
     current_word = ordered[0]["wordIndex"]
     current_start = ordered[0]["timestamp"]
@@ -65,6 +75,7 @@ def extract_eye_tracking_metrics(
             saccade_jumps.append(jump)
             if word_index < previous_word:
                 regression_count += 1
+                re_read_events.add(word_index)
             current_word = word_index
             current_start = timestamp
 
@@ -77,11 +88,21 @@ def extract_eye_tracking_metrics(
     bounded_seen = {
         index for index in seen_words if expected_word_count <= 0 or index < expected_word_count
     }
-    skipped_words = max(expected_word_count - len(bounded_seen), 0) if expected_word_count > 0 else 0
+    
+    skip_events: list[int] = []
+    if expected_word_count > 0:
+        skip_events = [i for i in range(expected_word_count) if i not in bounded_seen]
+    
+    skipped_words = len(skip_events)
 
     elapsed_ms = max(ordered[-1]["timestamp"] - ordered[0]["timestamp"], 1)
     elapsed_minutes = elapsed_ms / 60000
     reading_speed_wpm = round(len(bounded_seen) / elapsed_minutes, 2) if elapsed_minutes > 0 else 0.0
+
+    # Calculate attention score based on consistency and coverage
+    coverage = len(bounded_seen) / max(expected_word_count, 1)
+    stability = 1.0 - (min(regression_count, 20) / 40.0)  # Penalty for excessive regressions
+    attention_score = round(max(0.0, min(1.0, (coverage * 0.7) + (stability * 0.3))), 2)
 
     return {
         "fixation_duration_ms": round(sum(fixation_durations) / max(len(fixation_durations), 1), 2),
@@ -89,4 +110,7 @@ def extract_eye_tracking_metrics(
         "regression_count": regression_count,
         "skipped_words": skipped_words,
         "reading_speed_wpm": reading_speed_wpm,
+        "skip_events": skip_events,
+        "re_read_events": sorted(list(re_read_events)),
+        "attention_score": attention_score,
     }

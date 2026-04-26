@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getStudentProfile, getStudentProgress, getTeacherStudents } from "../api/profile";
+import {
+  getStudentLessons,
+  getStudentProfile,
+  getStudentProgress,
+  getTeacherStudents,
+} from "../api/profile";
 
 export const useStudentProfileQuery = (studentId?: number) =>
   useQuery({
@@ -20,4 +25,11 @@ export const useTeacherStudentsQuery = () =>
   useQuery({
     queryKey: ["teacher-students"],
     queryFn: getTeacherStudents,
+  });
+
+export const useStudentLessonsQuery = (studentId?: number) =>
+  useQuery({
+    queryKey: ["student-lessons", studentId],
+    queryFn: () => getStudentLessons(studentId as number),
+    enabled: typeof studentId === "number",
   });

@@ -13,3 +13,6 @@ email-validator==2.2.0
 numpy
 torch
 librosa
+openai-whisper
+jiwer
+pydub
