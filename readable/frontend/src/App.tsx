@@ -13,14 +13,18 @@ import { UploadPage } from "./pages/UploadPage";
 const AppShell = () => {
   const location = useLocation();
   const isLessonRoute = location.pathname.startsWith("/lesson/");
+  const isDiagnosticRoute = location.pathname.startsWith("/diagnostic");
+  const isFocusRoute = isLessonRoute || isDiagnosticRoute;
 
   return (
-    <div className={isLessonRoute ? "min-h-screen bg-[#f6f7f2]" : "min-h-screen bg-slate-50"}>
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#edf5ff_100%)]">
       {!isLessonRoute ? <Navbar /> : null}
       <main
         className={
           isLessonRoute
             ? "min-h-screen px-4 py-6 sm:px-6 lg:px-8"
+            : isDiagnosticRoute
+              ? "mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
             : "mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
         }
       >

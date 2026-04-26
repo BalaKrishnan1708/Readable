@@ -508,11 +508,11 @@ export const LessonPage = () => {
 
   if (Number.isNaN(contentId) || contentId <= 0) {
     return (
-      <div className="rounded-[2rem] bg-white p-8 shadow-soft">
+      <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur">
         <h1 className="text-2xl font-semibold text-ink">Reading session</h1>
         <p className="mt-3 text-slate-600">
           Open this page with a personalized content id, for example{" "}
-          <code className="rounded bg-slate-100 px-2 py-1">/lesson/{lessonId}?contentId=1</code>.
+          <code className="rounded-lg bg-sky-50 px-2 py-1 text-sea ring-1 ring-sky-100">/lesson/{lessonId}?contentId=1</code>.
         </p>
       </div>
     );
@@ -520,25 +520,25 @@ export const LessonPage = () => {
 
   if (startMutation.isError && !content) {
     return (
-      <div className="rounded-[2rem] bg-white p-8 shadow-soft">
+      <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur">
         <h1 className="text-2xl font-semibold text-ink">Lesson unavailable</h1>
         <p className="mt-3 max-w-2xl text-slate-600">
           {getErrorMessage(startMutation.error)}
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => {
               requestedContentIdRef.current = null;
               startMutation.mutate({ personalized_content_id: contentId });
             }}
-            className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="rounded-full bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] px-6 py-3 font-semibold text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] transition hover:brightness-105 active:scale-[0.98]"
           >
             Try again
           </button>
           <Link
             to="/dashboard"
-            className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-sea hover:text-sea"
+            className="rounded-full border border-sky-100 bg-white px-6 py-3 font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
           >
             Back to Dashboard
           </Link>
@@ -549,7 +549,7 @@ export const LessonPage = () => {
 
   if (!content || !profile || !supportAllocation || !supports) {
     return (
-      <div className="rounded-[2rem] bg-white p-8 shadow-soft">
+      <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur">
         <h1 className="text-2xl font-semibold text-ink">Preparing lesson</h1>
         <p className="mt-3 text-slate-600">
           Readable is shaping the support stack for this student and loading the personalized passage.
@@ -560,12 +560,12 @@ export const LessonPage = () => {
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2.25rem] bg-[linear-gradient(135deg,#f5fbf9_0%,#fffaf2_48%,#f6f8ff_100%)] shadow-soft">
-        <div className="grid gap-6 p-8 lg:grid-cols-[1.1fr,0.9fr]">
+      <section className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
           <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-sea">Readable Studio</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-sky-500">Readable Studio</p>
             <h1 className="mt-3 text-3xl font-semibold text-ink lg:text-[2.2rem]">
-              A calm lesson, already tuned to this reader.
+              A clean lesson space, already tuned to this reader.
             </h1>
             <p className="mt-3 max-w-2xl text-[0.98rem] leading-8 text-slate-600">
               {supportAllocation.supportReason}
@@ -574,49 +574,49 @@ export const LessonPage = () => {
               {supportAllocation.supportLabels.map((label) => (
                 <span
                   key={label}
-                  className="rounded-full border border-white/80 bg-white/90 px-3 py-2 text-sm font-medium text-ink"
+                  className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm"
                 >
                   {label}
                 </span>
               ))}
-              <span className="rounded-full border border-white/80 bg-white/90 px-3 py-2 text-sm font-medium text-ink">
+              <span className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
                 Gaze-guided ruler
               </span>
-              <span className="rounded-full border border-white/80 bg-white/90 px-3 py-2 text-sm font-medium text-ink">
+              <span className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
                 Real-time phonetic whisper
               </span>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-              <span className="rounded-full bg-white/85 px-4 py-2 shadow-sm">Lesson {lessonId}</span>
-              <span className="rounded-full bg-white/85 px-4 py-2 shadow-sm">
+              <span className="rounded-full bg-[#eef6ff] px-4 py-2 font-medium text-sea ring-1 ring-sea/10">Lesson {lessonId}</span>
+              <span className="rounded-full bg-white px-4 py-2 font-medium shadow-sm ring-1 ring-sky-100">
                 {content.segments.length} guided segments
               </span>
-              <span className="rounded-full bg-white/85 px-4 py-2 shadow-sm">
+              <span className="rounded-full bg-white px-4 py-2 font-medium shadow-sm ring-1 ring-sky-100">
                 Fixation help triggers after 1.2s
               </span>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.35rem] bg-white/90 p-5 shadow-soft">
-              <p className="text-sm text-slate-500">Reading level</p>
+            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
+              <p className="text-sm font-medium text-slate-500">Reading level</p>
               <p className="mt-2 text-2xl font-semibold text-ink">
                 {profile.reading_level ?? "Pending"}
               </p>
             </div>
-            <div className="rounded-[1.35rem] bg-white/90 p-5 shadow-soft">
-              <p className="text-sm text-slate-500">Target pace</p>
+            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
+              <p className="text-sm font-medium text-slate-500">Target pace</p>
               <p className="mt-2 text-2xl font-semibold text-ink">
                 {supportAllocation.targetWpm} WPM
               </p>
             </div>
-            <div className="rounded-[1.35rem] bg-white/90 p-5 shadow-soft">
-              <p className="text-sm text-slate-500">Difficult words</p>
+            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
+              <p className="text-sm font-medium text-slate-500">Difficult words</p>
               <p className="mt-2 text-2xl font-semibold text-ink">
                 {supportAllocation.glossary.length}
               </p>
             </div>
-            <div className="rounded-[1.35rem] bg-white/90 p-5 shadow-soft">
-              <p className="text-sm text-slate-500">Whisper readiness</p>
+            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
+              <p className="text-sm font-medium text-slate-500">Whisper readiness</p>
               <p className="mt-2 text-2xl font-semibold text-ink">
                 {tracker.status === "connected" ? "Live" : "Warming"}
               </p>
@@ -631,7 +631,7 @@ export const LessonPage = () => {
       <section className="grid gap-6 xl:grid-cols-[0.88fr,1.12fr]">
         <div className="space-y-6">
           {supports.glossary && supportAllocation.glossary.length > 0 ? (
-            <div className="rounded-[1.75rem] bg-[linear-gradient(180deg,#ffffff_0%,#fffaf5_100%)] p-6 shadow-soft">
+            <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-ink">Vocabulary preview</h2>
@@ -646,37 +646,37 @@ export const LessonPage = () => {
                       current ? { ...current, glossary: !current.glossary } : current,
                     )
                   }
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
                     supports.glossary
-                      ? "bg-sea text-white"
-                      : "border border-slate-200 text-slate-600"
+                      ? "bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] active:scale-[0.98]"
+                      : "border border-sky-100 bg-white text-slate-600 shadow-sm active:scale-[0.98]"
                   }`}
                 >
                   {supports.glossary ? "Glossary On" : "Glossary Off"}
                 </button>
               </div>
-              <div className="mt-5 grid gap-3">
+              <div className="mt-6 grid gap-4">
                 {supportAllocation.glossary.map((entry) => (
                   <div
                     key={entry.word}
-                    className="rounded-[1.35rem] border border-white bg-white/90 p-4 shadow-[0_18px_40px_-32px_rgba(15,23,42,0.38)]"
+                    className="rounded-[1.5rem] border border-sky-100 bg-white p-5 shadow-sm transition hover:shadow-soft"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-lg font-semibold text-ink">{entry.word}</p>
                         {entry.syllables ? (
-                          <p className="mt-1 text-sm font-medium text-sea">{entry.syllables}</p>
+                          <p className="mt-1 text-sm font-semibold tracking-wide text-sea">{entry.syllables}</p>
                         ) : null}
                       </div>
                       <button
                         type="button"
                         onClick={() => speakText(entry.word, speechRate)}
-                        className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:ring-sea"
+                        className="rounded-full border border-sky-100 bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
                       >
                         Hear
                       </button>
                     </div>
-                    <p className="mt-3 text-sm text-slate-700">{entry.simpleDefinition}</p>
+                    <p className="mt-3 font-medium text-sm leading-relaxed text-slate-700">{entry.simpleDefinition}</p>
                     <p className="mt-2 text-sm text-slate-500">{entry.cue}</p>
                   </div>
                 ))}
@@ -684,7 +684,7 @@ export const LessonPage = () => {
             </div>
           ) : null}
 
-          <div className="rounded-[1.75rem] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-soft">
+          <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-ink">Support stack</h2>
@@ -695,19 +695,19 @@ export const LessonPage = () => {
               <button
                 type="button"
                 onClick={() => setShowSummary((current) => !current)}
-                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-sea hover:text-sea"
+                className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
               >
                 {showSummary ? "Hide Summary" : "Plain Summary"}
               </button>
             </div>
 
             {showSummary ? (
-              <div className="mt-4 rounded-[1.35rem] bg-mist p-4 text-sm leading-7 text-slate-700">
+              <div className="mt-5 rounded-[1.5rem] bg-[#eef6ff] p-5 text-sm font-medium leading-relaxed text-slate-700 ring-1 ring-sea/10">
                 {supportAllocation.summary}
               </div>
             ) : null}
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-6 flex flex-wrap gap-2">
               {([
                 ["phonics", "Phonics"],
                 ["audio", "Audio"],
@@ -723,10 +723,10 @@ export const LessonPage = () => {
                       current ? { ...current, [key]: !current[key] } : current,
                     )
                   }
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
                     supports[key]
-                      ? "bg-sea text-white shadow-sm"
-                      : "border border-slate-200 bg-white/80 text-slate-600"
+                      ? "bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-white shadow-sm"
+                      : "border border-sky-100 bg-white text-slate-600 hover:text-ink"
                   }`}
                 >
                   {label}
@@ -740,23 +740,23 @@ export const LessonPage = () => {
                 onClick={() =>
                   speakText(content.segments[activeLineIndex] ?? content.segments[0] ?? "", speechRate)
                 }
-                className="rounded-[1.1rem] bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="rounded-[1.2rem] bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] px-4 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] transition hover:brightness-105 active:scale-[0.98]"
               >
                 Read active line
               </button>
               <button
                 type="button"
                 onClick={() => speakText(content.segments.join(" "), speechRate)}
-                className="rounded-[1.1rem] border border-slate-200 bg-white/90 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-sea hover:text-sea"
+                className="rounded-[1.2rem] border border-sky-100 bg-white px-4 py-3 text-sm font-semibold tracking-wide text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
               >
                 Echo full passage
               </button>
             </div>
 
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between text-sm text-slate-500">
+            <div className="mt-6">
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-slate-500">
                 <span>Voice speed</span>
-                <span>{speechRate.toFixed(2)}x</span>
+                <span className="text-sea">{speechRate.toFixed(2)}x</span>
               </div>
               <input
                 type="range"
@@ -765,69 +765,41 @@ export const LessonPage = () => {
                 step="0.05"
                 value={speechRate}
                 onChange={(event) => setSpeechRate(Number(event.target.value))}
-                className="w-full accent-sea"
+                className="w-full accent-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)]"
               />
             </div>
 
-            <div className="mt-5 grid gap-3 rounded-[1.35rem] bg-[#f8fbfd] p-4 text-sm text-slate-600">
+            <div className="mt-6 grid gap-3 rounded-[1.5rem] bg-white p-5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-sky-100">
               <div className="flex items-center justify-between gap-4">
                 <span>Eye tracker</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-ink ring-1 ring-slate-200">
+                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
                   {tracker.status}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span>Speech monitor</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-ink ring-1 ring-slate-200">
+                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
                   {isRecording ? (isSpeechSilent ? "Listening for voice" : "Voice detected") : "Idle"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span>Phonetic whisper</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-ink ring-1 ring-slate-200">
+                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
                   {phoneticAssist ? "Helping now" : "Ready"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span>Re-read events</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-ink ring-1 ring-slate-200">
+                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
                   {reReadEvents.length}
                 </span>
               </div>
             </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setIsPacerRunning((current) => !current)}
-                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
-                  isPacerRunning
-                    ? "bg-rose-500 text-white hover:bg-rose-600"
-                    : "bg-amber-100 text-amber-900 hover:bg-amber-200"
-                }`}
-              >
-                {isPacerRunning ? "Pause Pacer" : `Guide Pace at ${supportAllocation.targetWpm} WPM`}
-              </button>
-              <RecordButton
-                label="Start Reading"
-                onRecordingStateChange={setIsRecording}
-                onAudioActivityChange={setIsSpeechSilent}
-                onStop={async (file) => {
-                  await submitMutation.mutateAsync(file);
-                }}
-              />
-              <Link
-                to="/dashboard"
-                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-sea hover:text-sea"
-              >
-                Back to Dashboard
-              </Link>
-            </div>
           </div>
         </div>
 
-        <div className="rounded-[1.9rem] bg-[linear-gradient(180deg,#fffefb_0%,#fff9f1_100%)] p-6 shadow-soft">
-          <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
+          <div className="flex flex-col gap-4 border-b border-sky-100 pb-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-ink">Adaptive reading surface</h2>
               <p className="mt-1 text-sm text-slate-500">
@@ -835,10 +807,10 @@ export const LessonPage = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="rounded-full bg-mist px-4 py-2 text-sm font-semibold text-sea">
+              <div className="rounded-full bg-[#eef6ff] px-4 py-2 text-sm font-semibold text-sea ring-1 ring-sea/10">
                 Active line {activeLineIndex + 1} / {readerLines.length}
               </div>
-              <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-slate-200">
+              <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-sky-100 shadow-sm">
                 {supports.lineFocus ? "Line focus on" : "Free reading mode"}
               </div>
             </div>
@@ -846,7 +818,7 @@ export const LessonPage = () => {
 
           <div
             ref={readingSurfaceRef}
-            className="relative mt-6 rounded-[1.7rem] bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] sm:p-6"
+            className="relative mt-6 rounded-[2rem] border border-sky-50 bg-white p-6 shadow-sm"
             style={{
               fontFamily: supports.bionic
                 ? `"Lexend", "Trebuchet MS", "Segoe UI", sans-serif`
@@ -855,7 +827,7 @@ export const LessonPage = () => {
           >
             {gazeRulerActive ? (
               <div
-                className={`pointer-events-none absolute left-3 right-3 z-0 rounded-[1.45rem] bg-[linear-gradient(90deg,rgba(95,190,176,0.18)_0%,rgba(95,190,176,0.1)_52%,rgba(95,190,176,0.04)_100%)] ring-1 ring-sea/10 transition-[top,height,opacity] duration-75 ease-out sm:left-5 sm:right-5 ${
+                className={`pointer-events-none absolute left-4 right-4 z-0 rounded-[1.5rem] bg-[#eef6ff] ring-1 ring-sea/10 transition-[top,height,opacity] duration-75 ease-out ${
                   readingRuler.visible ? "opacity-100" : "opacity-0"
                 }`}
                 style={{
@@ -866,20 +838,20 @@ export const LessonPage = () => {
             ) : null}
             {phoneticAssist ? (
               <div
-                className="pointer-events-none absolute z-10 w-[min(320px,82vw)] -translate-x-1/2 -translate-y-full rounded-[1.35rem] border border-white/70 bg-[#fffdf8]/95 p-4 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.45)] backdrop-blur"
+                className="pointer-events-none absolute z-10 w-[min(320px,82vw)] -translate-x-1/2 -translate-y-full rounded-[1.5rem] border border-white/80 bg-white/90 p-5 shadow-soft backdrop-blur"
                 style={{ left: phoneticAssist.left, top: phoneticAssist.top }}
               >
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                <p className="text-[0.72rem] font-bold uppercase tracking-widest text-sky-500">
                   Hesitation detected...
                 </p>
                 <div className="mt-2 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xl font-semibold text-ink">{phoneticAssist.word}</p>
-                    <p className="mt-1 text-sm font-medium text-sea">
+                    <p className="mt-1 text-sm font-semibold text-sea">
                       {phoneticAssist.syllables.join("·")}
                     </p>
                   </div>
-                  <span className="rounded-full bg-mist px-3 py-1.5 text-xs font-semibold text-sea">
+                  <span className="rounded-full bg-[#eef6ff] px-3 py-1.5 text-xs font-semibold text-sea ring-1 ring-sea/10">
                     whisper
                   </span>
                 </div>
@@ -893,7 +865,7 @@ export const LessonPage = () => {
               </div>
             ) : null}
 
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] bg-[#f8fbfd] px-4 py-3 text-sm text-slate-500">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] bg-[#f7fbff] px-5 py-4 text-sm font-medium text-slate-500 ring-1 ring-sky-50">
               <p>
                 Hold your gaze on a hard word for a moment and Readable softly reveals the pronunciation.
               </p>
@@ -912,17 +884,17 @@ export const LessonPage = () => {
                     className={`rounded-[1.45rem] border px-5 py-5 transition ${
                       gazeRulerActive
                         ? isFocusedLine
-                          ? "border-sea/15 bg-[#fffdf8] opacity-100"
-                          : "border-transparent bg-[#faf7f0] opacity-50"
-                        : "border-slate-100 bg-[#fcfaf6]"
+                          ? "border-sea/15 bg-white opacity-100 shadow-[0_18px_42px_-32px_rgba(47,128,237,0.32)]"
+                          : "border-transparent bg-[#f5faff] opacity-50"
+                        : "border-sky-50 bg-[#fbfdff]"
                     }`}
                   >
                     <div className="flex flex-wrap gap-x-2 gap-y-3 text-left">
                       {line.map((word) => {
                         const isActive = activeWordIndex === word.index;
                         const wordTone = word.difficult
-                          ? "bg-amber-50 text-amber-950 ring-amber-100"
-                          : "bg-white/96 text-ink ring-slate-100";
+                          ? "bg-[#eef6ff] text-sea ring-sky-100"
+                          : "bg-white/96 text-ink ring-sky-50";
                         return (
                           <button
                             key={`${word.index}-${word.display}`}
@@ -944,9 +916,9 @@ export const LessonPage = () => {
                                 }
                               }
                             }}
-                            className={`rounded-[1rem] px-3 py-2.5 text-left align-top transition ${
+                            className={`rounded-[1.2rem] px-3 py-2.5 text-left align-top transition ${
                               isActive
-                                ? "bg-sea text-white shadow-soft ring-2 ring-sea/25"
+                                ? "bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] ring-2 ring-sea/30"
                                 : `${wordTone} ring-1 hover:ring-sea/25`
                             }`}
                           >
@@ -954,7 +926,7 @@ export const LessonPage = () => {
                               {supports.bionic ? renderBionicWord(word.display) : word.display}
                             </div>
                             {supports.phonics && word.difficult ? (
-                              <div className="mt-1.5 flex flex-wrap gap-1 text-[0.68rem] font-semibold uppercase tracking-[0.08em]">
+                              <div className="mt-2 flex flex-wrap gap-1 text-[0.68rem] font-bold uppercase tracking-widest">
                                 {word.syllables.map((syllable, syllableIndex) => (
                                   <span
                                     key={`${word.index}-${syllable}-${syllableIndex}`}
@@ -962,10 +934,10 @@ export const LessonPage = () => {
                                       syllableIndex % 2 === 0
                                         ? isActive
                                           ? "bg-white/20 text-white"
-                                          : "bg-teal-100 text-teal-900"
+                                          : "bg-[#eef6ff] text-sea ring-1 ring-sea/20"
                                         : isActive
                                           ? "bg-white/10 text-white"
-                                          : "bg-amber-100 text-amber-900"
+                                          : "bg-white text-slate-500 ring-1 ring-sky-100 shadow-sm"
                                     }`}
                                   >
                                     {syllable}
@@ -983,6 +955,35 @@ export const LessonPage = () => {
             </div>
           </div>
         </div>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => setIsPacerRunning((current) => !current)}
+            className={`rounded-full px-6 py-3.5 text-sm font-semibold transition active:scale-[0.98] ${
+              isPacerRunning
+                ? "bg-rose-500 text-white shadow-[0_4px_12px_rgba(244,63,94,0.3)] hover:brightness-105"
+                : "bg-white border border-sky-100 text-slate-600 shadow-sm hover:text-ink hover:border-sky-200"
+            }`}
+          >
+            {isPacerRunning ? "Pause Pacer" : `Guide Pace at ${supportAllocation.targetWpm} WPM`}
+          </button>
+          <RecordButton
+            label="Start Reading"
+            onRecordingStateChange={setIsRecording}
+            onAudioActivityChange={setIsSpeechSilent}
+            onStop={async (file) => {
+              await submitMutation.mutateAsync(file);
+            }}
+          />
+          <Link
+            to="/dashboard"
+            className="rounded-full border border-sky-100 bg-white px-6 py-3.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+
       </section>
 
       {sessionResults ? (
@@ -993,31 +994,31 @@ export const LessonPage = () => {
               wpm={sessionResults.speed_wpm}
               attention={sessionResults.attention_score}
             />
-            <div className="rounded-[1.5rem] bg-white p-6 shadow-soft">
+            <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
               <h2 className="text-lg font-semibold text-ink">Errors and pacing</h2>
               <ul className="mt-4 space-y-3 text-sm text-slate-600">
                 {sessionResults.errors.map((error) => (
                   <li
                     key={`${error.word}-${error.position}`}
-                    className="rounded-2xl bg-blush px-4 py-3"
+                    className="rounded-2xl border border-rose-100 bg-rose-50/50 px-5 py-4"
                   >
                     <span className="font-semibold text-ink">{error.word}</span> at position{" "}
                     {error.position + 1} was marked as{" "}
-                    <span className="text-amber-700">{error.type}</span>.
+                    <span className="font-semibold text-rose-500">{error.type}</span>.
                   </li>
                 ))}
               </ul>
             </div>
           </div>
-          <div className="rounded-[1.5rem] bg-white p-6 shadow-soft">
+          <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
             <h2 className="text-lg font-semibold text-ink">Feedback panel</h2>
-            <div className="mt-4 space-y-3 text-sm text-slate-600">
+            <div className="mt-4 space-y-3 text-sm font-medium leading-relaxed text-slate-600">
               {attentionTips.map((tip) => (
-                <p key={tip} className="rounded-2xl bg-mist px-4 py-3">
+                <p key={tip} className="rounded-2xl border border-sky-100 bg-white px-5 py-4 shadow-sm">
                   {tip}
                 </p>
               ))}
-              <p className="rounded-2xl bg-amber-50 px-4 py-3">
+              <p className="rounded-2xl border border-amber-100 bg-amber-50/50 px-5 py-4">
                 Hesitation points: {sessionResults.hesitation_points.join(", ")}
               </p>
             </div>

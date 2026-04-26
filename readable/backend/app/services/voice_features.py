@@ -44,6 +44,7 @@ def extract_voice_metrics(
     duration_seconds = _audio_duration_seconds(audio_signal, sample_rate)
     if duration_seconds <= 0 and speed_wpm > 0:
         duration_seconds = len(words) / (speed_wpm / 60)
+    has_duration_signal = duration_seconds > 0
     duration_seconds = max(duration_seconds, 1e-6)
 
     pause_count, pause_duration_ms = _pause_stats(audio_signal, sample_rate)
@@ -53,7 +54,9 @@ def extract_voice_metrics(
         pause_duration_ms = float(pause_count * 350)
 
     speech_rate_wps = len(words) / duration_seconds
-    pause_frequency = pause_count / (duration_seconds / 60) if duration_seconds > 0 else 0.0
+    pause_frequency = (
+        pause_count / (duration_seconds / 60) if has_duration_signal and duration_seconds > 0 else 0.0
+    )
     mispronunciation_rate = _mispronunciation_rate(errors, expected_word_count)
     repetition_rate = _repetition_rate(words)
 

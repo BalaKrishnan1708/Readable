@@ -8,16 +8,16 @@ export const TeacherDashboardPage = () => {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] bg-hero-radial p-8 shadow-soft">
-        <p className="text-sm uppercase tracking-[0.25em] text-sea">Teacher Dashboard</p>
-        <h1 className="mt-2 text-3xl font-semibold text-ink">Student overview at intervention pace</h1>
+      <section className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
+        <p className="text-sm font-bold uppercase tracking-widest text-sky-500">Teacher Dashboard</p>
+        <h1 className="mt-3 text-3xl font-semibold text-ink">Student overview at intervention pace</h1>
         <p className="mt-3 max-w-2xl text-slate-600">
           Compare accuracy, identify challenge vocabulary, and open a student detail view for
           history and support planning.
         </p>
       </section>
 
-      <section className="rounded-[2rem] bg-white p-6 shadow-soft">
+      <section className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
         <h2 className="text-lg font-semibold text-ink">Students</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -29,7 +29,7 @@ export const TeacherDashboardPage = () => {
                 <th className="pb-3">Reading level</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-sky-50">
               {(studentsQuery.data ?? []).map((student) => (
                 <tr
                   key={student.student_id}
@@ -47,7 +47,7 @@ export const TeacherDashboardPage = () => {
                       : "No sessions yet"}
                   </td>
                   <td className="py-4">
-                    <span className="rounded-full bg-mist px-3 py-2 text-xs font-semibold text-sea">
+                    <span className="rounded-full border border-sky-100 bg-white px-4 py-2 text-xs font-medium text-slate-500 shadow-sm">
                       {student.reading_level ?? "Pending"}
                     </span>
                   </td>

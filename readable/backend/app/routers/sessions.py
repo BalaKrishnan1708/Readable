@@ -16,20 +16,24 @@ from app.schemas.lesson import PhoneticSupportWordResponse
 from app.schemas.session import (
     DiagnosticStartResponse,
     DiagnosticSubmitResponse,
+    EyeMetricsPayload,
+    FocusedWordHit,
     ReadingStartRequest,
     ReadingStartResponse,
     ReadingSubmitResponse,
     SessionResultPayload,
+    VoiceMetricsPayload,
 )
 from app.services.content import DIAGNOSTIC_PASSAGE
 from app.services.dyslexia_profile_inference import (
     build_profiler_features,
     predict_profile_scores,
 )
-from app.services import nlp, stt, voice_features
+from app.services import eye_tracker, nlp, stt, voice_features
 from app.services.eye_features import extract_eye_tracking_metrics
 from app.services.profile import build_profile_response, create_or_update
 from app.services.progress import create_progress_entry
+from app.services.review_generator import generate_diagnostic_review
 from app.services.voice_features import extract_voice_metrics, get_audio_duration
 
 
@@ -227,7 +231,7 @@ async def _submit_session(
         if expected_session_type == SessionType.diagnostic:
             profile = await build_profile_response(db, current_user.id)
             return DiagnosticSubmitResponse(
-                result=_result_payload_from_existing(session, existing),
+                result=await _result_payload_from_existing(db, session, existing),
                 profile=profile,
             )
         raise HTTPException(status_code=400, detail="Session already submitted")
@@ -258,17 +262,23 @@ async def _submit_session(
     # 🔹 PARALLEL TASKS
     # ---------------------------
 
-    try:
-        eye_payload["expected_word_count"] = expected_word_count
-
-        spoken_text, eye_result = await asyncio.gather(
-            stt.transcribe(audio_bytes),
-            eye_tracker.analyze(eye_payload)
-        )
-    except Exception as e:
-        print("Async error (STT/Eye):", e)
+    eye_payload["expected_word_count"] = expected_word_count
+    spoken_result, eye_result_candidate = await asyncio.gather(
+        stt.transcribe(audio_bytes),
+        eye_tracker.analyze(eye_payload),
+        return_exceptions=True,
+    )
+    if isinstance(spoken_result, Exception):
+        print("STT error:", spoken_result)
         spoken_text = ""
+    else:
+        spoken_text = spoken_result
+
+    if isinstance(eye_result_candidate, Exception):
+        print("Eye analysis error:", eye_result_candidate)
         eye_result = {}
+    else:
+        eye_result = eye_result_candidate
 
     # ---------------------------
     # 🔹 NLP ANALYSIS
@@ -288,6 +298,7 @@ async def _submit_session(
         )
     except Exception as e:
         print("NLP error:", e)
+        duration = 0.0
         nlp_result = {"errors": [], "speed_wpm": 0, "hesitation_points": []}
 
     accuracy_pct = _accuracy_pct(expected_text, nlp_result["errors"])
@@ -353,6 +364,16 @@ async def _submit_session(
         model_profile_scores = {}
 
     # ---------------------------
+    # 🔹 GENERATE REVIEW (LLM)
+    # ---------------------------
+
+    review_text = await generate_diagnostic_review(
+        accuracy_pct=accuracy_pct,
+        speed_wpm=float(nlp_result["speed_wpm"]),
+        model_profile_scores=model_profile_scores
+    )
+
+    # ---------------------------
     # 🔹 SAVE RESULT
     # ---------------------------
 
@@ -363,9 +384,14 @@ async def _submit_session(
         errors=nlp_result["errors"],
         speed_wpm=float(nlp_result["speed_wpm"]),
         hesitation_points=nlp_result["hesitation_points"],
-        eye_tracking_data=eye_result,
+        eye_tracking_data={
+            **eye_result,
+            "sample_count": int(eye_payload.get("sample_count", 0) or 0),
+            "focused_word_hits": eye_payload.get("focused_word_hits", []),
+        },
         accuracy_pct=accuracy_pct,
         model_profile_scores=model_profile_scores,
+        review_text=review_text,
     )
     db.add(result_model)
 
@@ -428,6 +454,8 @@ async def _submit_session(
     await delete_cached_value(_session_key(session_id))
 
     profile = await build_profile_response(db, current_user.id)
+    eye_metrics_payload = _build_eye_metrics_payload(eye_result, eye_payload)
+    voice_metrics_payload = _build_voice_metrics_payload(voice_metrics, duration)
 
     result_payload = SessionResultPayload(
         session_id=session.id,
@@ -442,6 +470,9 @@ async def _submit_session(
         avg_fixation_ms=int(eye_result.get("avg_fixation_ms", 0)),
         accuracy_pct=accuracy_pct,
         model_profile_scores=model_profile_scores,
+        review_text=review_text,
+        eye_metrics=eye_metrics_payload,
+        voice_metrics=voice_metrics_payload,
     )
 
     if create_progress:
@@ -484,6 +515,107 @@ def _parse_eye_payload(eye_tracking_payload: str) -> dict[str, object]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def _normalize_focused_word_hits(value: object) -> list[FocusedWordHit]:
+    if not isinstance(value, list):
+        return []
+    hits: list[FocusedWordHit] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        word = item.get("word")
+        count = item.get("count")
+        if isinstance(word, str) and isinstance(count, int):
+            hits.append(FocusedWordHit(word=word, count=count))
+    return hits[:8]
+
+
+def _build_eye_metrics_payload(
+    eye_result: dict[str, object],
+    eye_payload: dict[str, object],
+    eye_feature: EyeTrackingFeature | None = None,
+) -> EyeMetricsPayload:
+    source = eye_result if eye_result else {}
+    fixation_duration = (
+        float(source.get("fixation_duration_ms", 0.0))
+        if source.get("fixation_duration_ms") is not None
+        else float(eye_feature.fixation_duration_ms if eye_feature else 0.0)
+    )
+    saccade_length = (
+        float(source.get("saccade_length", 0.0))
+        if source.get("saccade_length") is not None
+        else float(eye_feature.saccade_length if eye_feature else 0.0)
+    )
+    regression_count = (
+        int(source.get("regression_count", 0))
+        if source.get("regression_count") is not None
+        else int(eye_feature.regression_count if eye_feature else 0)
+    )
+    skipped_words = (
+        int(source.get("skipped_words", 0))
+        if source.get("skipped_words") is not None
+        else int(eye_feature.skipped_words if eye_feature else 0)
+    )
+    reading_speed_wpm = (
+        float(source.get("reading_speed_wpm", 0.0))
+        if source.get("reading_speed_wpm") is not None
+        else float(eye_feature.reading_speed_wpm if eye_feature else 0.0)
+    )
+
+    return EyeMetricsPayload(
+        fixation_duration_ms=fixation_duration,
+        saccade_length=saccade_length,
+        regression_count=regression_count,
+        skipped_words=skipped_words,
+        reading_speed_wpm=reading_speed_wpm,
+        sample_count=int(eye_payload.get("sample_count", 0) or 0),
+        skip_events=list(source.get("skip_events", []))
+        if isinstance(source.get("skip_events", []), list)
+        else [],
+        re_read_events=list(source.get("re_read_events", []))
+        if isinstance(source.get("re_read_events", []), list)
+        else [],
+        attention_score=float(source.get("attention_score", 0.0) or 0.0),
+        focused_word_hits=_normalize_focused_word_hits(eye_payload.get("focused_word_hits", [])),
+    )
+
+
+def _build_voice_metrics_payload(
+    voice_metrics: dict[str, object],
+    audio_duration_seconds: float,
+    voice_feature: VoiceFeature | None = None,
+) -> VoiceMetricsPayload:
+    source = voice_metrics if voice_metrics else {}
+    return VoiceMetricsPayload(
+        speech_rate_wps=float(
+            source.get("speech_rate_wps", voice_feature.speech_rate_wps if voice_feature else 0.0)
+            or 0.0
+        ),
+        pause_duration_ms=float(
+            source.get(
+                "pause_duration_ms",
+                voice_feature.pause_duration_ms if voice_feature else 0.0,
+            )
+            or 0.0
+        ),
+        pause_frequency=float(
+            source.get("pause_frequency", voice_feature.pause_frequency if voice_feature else 0.0)
+            or 0.0
+        ),
+        mispronunciation_rate=float(
+            source.get(
+                "mispronunciation_rate",
+                voice_feature.mispronunciation_rate if voice_feature else 0.0,
+            )
+            or 0.0
+        ),
+        repetition_rate=float(
+            source.get("repetition_rate", voice_feature.repetition_rate if voice_feature else 0.0)
+            or 0.0
+        ),
+        audio_duration_seconds=float(audio_duration_seconds or 0.0),
+    )
+
+
 async def _recover_reading_payload(
     db: AsyncSession,
     student_id: int,
@@ -523,8 +655,20 @@ async def _recover_reading_payload(
     }
 
 
-def _result_payload_from_existing(session: Session, existing: SessionResult) -> SessionResultPayload:
+async def _result_payload_from_existing(
+    db: AsyncSession,
+    session: Session,
+    existing: SessionResult,
+) -> SessionResultPayload:
     eye_data = existing.eye_tracking_data if isinstance(existing.eye_tracking_data, dict) else {}
+    eye_feature_result = await db.execute(
+        select(EyeTrackingFeature).where(EyeTrackingFeature.session_id == session.id)
+    )
+    eye_feature = eye_feature_result.scalar_one_or_none()
+    voice_feature_result = await db.execute(
+        select(VoiceFeature).where(VoiceFeature.session_id == session.id)
+    )
+    voice_feature = voice_feature_result.scalar_one_or_none()
     return SessionResultPayload(
         session_id=session.id,
         spoken_text=existing.spoken_text,
@@ -544,4 +688,7 @@ def _result_payload_from_existing(session: Session, existing: SessionResult) -> 
         avg_fixation_ms=int(eye_data.get("avg_fixation_ms", 0) or 0),
         accuracy_pct=float(existing.accuracy_pct),
         model_profile_scores=existing.model_profile_scores if isinstance(existing.model_profile_scores, dict) else {},
+        review_text=existing.review_text,
+        eye_metrics=_build_eye_metrics_payload(eye_data, eye_data, eye_feature),
+        voice_metrics=_build_voice_metrics_payload({}, 0.0, voice_feature),
     )

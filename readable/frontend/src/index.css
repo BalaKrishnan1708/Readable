@@ -3,21 +3,32 @@
 @tailwind utilities;
 
 :root {
-  color: #0f172a;
-  background-color: #f8fafc;
-  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  color: #16324f;
+  background-color: #f4f8ff;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(125, 211, 252, 0.1), transparent 26%),
+    linear-gradient(180deg, #f8fbff 0%, #f3f8ff 48%, #eef5ff 100%);
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 28%),
-    linear-gradient(180deg, #fffaf5 0%, #f8fafc 35%, #f8fafc 100%);
+  min-height: 100vh;
+  background: transparent;
+  color: #16324f;
 }
 
 * {
   box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 a {

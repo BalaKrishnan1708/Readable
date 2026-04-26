@@ -16,3 +16,4 @@ librosa
 openai-whisper
 jiwer
 pydub
+groq==0.4.2

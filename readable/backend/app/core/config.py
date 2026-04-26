@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         "http://0.0.0.0:5173",
     ]
     cors_origin_regex: str = r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$"
+    groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
 
     model_config = SettingsConfigDict(
         env_file=".env",
