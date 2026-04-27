@@ -1,10 +1,13 @@
 import asyncio
 import functools
 import tempfile
+import logging
 from pathlib import Path
 
 import whisper
 import torch
+
+logger = logging.getLogger(__name__)
 
 # Global model cache to avoid reloading on every request
 _model = None
@@ -21,15 +24,15 @@ async def transcribe(audio_bytes: bytes) -> str:
     """
     global _model
     
+    if not audio_bytes or len(audio_bytes) < 100:
+        logger.warning("STT: Received empty or too short audio bytes. Skipping transcription.")
+        return ""
+
     if _model is None:
-        # Using "base" for a good balance of speed and accuracy. 
-        # "tiny" is faster but less accurate.
-        # "base.en" is optimized for English.
         device = "cuda" if torch.cuda.is_available() else "cpu"
         _model = whisper.load_model("base", device=device)
 
     # Whisper requires a file path or a numpy array. 
-    # We'll use a temporary file for simplicity and robustness.
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp.write(audio_bytes)
         tmp_path = tmp.name
@@ -38,8 +41,7 @@ async def transcribe(audio_bytes: bytes) -> str:
         # Run whisper in a thread pool as it is a CPU/GPU intensive blocking call
         loop = asyncio.get_running_loop()
         
-        # We provide the expected text as a initial_prompt to guide the model, 
-        # which is very helpful for dyslexia interventions where pronunciation might be off.
+        # We provide the expected text as a initial_prompt to guide the model
         result = await loop.run_in_executor(
             None, 
             functools.partial(
@@ -50,6 +52,9 @@ async def transcribe(audio_bytes: bytes) -> str:
             )
         )
         return result["text"].strip()
+    except Exception as e:
+        logger.error(f"STT transcription failed: {e}")
+        return ""
     finally:
         # Cleanup temporary file
         if Path(tmp_path).exists():

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import require_role
 from app.core.redis import cache_json, delete_cached_value, get_cached_json
-from app.models import EyeTrackingFeature, PersonalizedContent, Session, SessionResult, User, VoiceFeature
+from app.models import EyeTrackingFeature, PersonalizedContent, Session, SessionResult, StudentProfile, User, VoiceFeature
 from app.models.session import SessionStatus, SessionType
 from app.schemas.lesson import PersonalizedContentResponse
 from app.schemas.lesson import PhoneticSupportWordResponse
@@ -29,7 +29,7 @@ from app.services.dyslexia_profile_inference import (
     build_profiler_features,
     predict_profile_scores,
 )
-from app.services import eye_tracker, nlp, stt, voice_features
+from app.services import eye_tracker, nlp, stt, voice_features, llm
 from app.services.eye_features import extract_eye_tracking_metrics
 from app.services.profile import build_profile_response, create_or_update
 from app.services.progress import create_progress_entry
@@ -357,20 +357,32 @@ async def _submit_session(
             sample_rate=sample_rate,
         )
 
-        model_profile_scores = predict_profile_scores(profiler_features) or {}
+        model_profile_scores = await llm.get_profile_scores(
+            features=profiler_features,
+            expected_text=expected_text,
+            spoken_text=spoken_text
+        ) or {}
 
     except Exception as e:
-        print("ML ERROR:", e)
+        print("GROQ SCORING ERROR:", e)
         model_profile_scores = {}
 
     # ---------------------------
     # 🔹 GENERATE REVIEW (LLM)
     # ---------------------------
 
+    student_name = current_user.email.split("@")[0].replace(".", " ").title() if current_user.email else None
+    
+    profile_result = await db.execute(select(StudentProfile).where(StudentProfile.user_id == current_user.id))
+    student_profile = profile_result.scalar_one_or_none()
+    reading_level = student_profile.reading_level if student_profile else None
+
     review_text = await generate_diagnostic_review(
         accuracy_pct=accuracy_pct,
         speed_wpm=float(nlp_result["speed_wpm"]),
-        model_profile_scores=model_profile_scores
+        model_profile_scores=model_profile_scores,
+        student_name=student_name,
+        reading_level=reading_level,
     )
 
     # ---------------------------
