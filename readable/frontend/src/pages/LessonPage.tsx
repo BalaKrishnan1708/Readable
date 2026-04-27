@@ -2,6 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { 
+  Rocket, 
+  PlayCircle, 
+  Square, 
+  Mic, 
+  Eye, 
+  Sparkles, 
+  ChevronRight, 
+  Volume2, 
+  Target, 
+  Settings2,
+  FileText,
+  Info
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { startReading, submitReading } from "../api/sessions";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -120,7 +135,7 @@ const renderBionicWord = (word: string) => {
   const midpoint = Math.max(1, Math.ceil(word.length / 2));
   return (
     <>
-      <strong className="font-semibold">{word.slice(0, midpoint)}</strong>
+      <strong className="font-bold">{word.slice(0, midpoint)}</strong>
       {word.slice(midpoint)}
     </>
   );
@@ -489,542 +504,178 @@ export const LessonPage = () => {
     return () => window.clearTimeout(timeout);
   }, [isRecording, isSpeechSilent, phoneticAssist]);
 
-  const attentionTips = useMemo(() => {
-    if (!sessionResults) {
-      return [];
-    }
-    return [
-      "Tap through the highlighted line before recording to settle your eye path.",
-      sessionResults.attention_score < 0.75
-        ? "Readable noticed some attention drift, so a shorter second read could help."
-        : "Attention held together well through this lesson.",
-      sessionResults.speed_wpm < 100
-        ? "A slightly slower first pass with the pacer can build steadier fluency."
-        : "Pacing is looking comfortable for supported reading.",
-    ];
-  }, [sessionResults]);
-
-  const gazeRulerActive = supports?.lineFocus || tracker.status === "connected";
-
-  if (Number.isNaN(contentId) || contentId <= 0) {
-    return (
-      <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold text-ink">Reading session</h1>
-        <p className="mt-3 text-slate-600">
-          Open this page with a personalized content id, for example{" "}
-          <code className="rounded-lg bg-sky-50 px-2 py-1 text-sea ring-1 ring-sky-100">/lesson/{lessonId}?contentId=1</code>.
-        </p>
-      </div>
-    );
-  }
-
-  if (startMutation.isError && !content) {
-    return (
-      <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold text-ink">Lesson unavailable</h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
-          {getErrorMessage(startMutation.error)}
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              requestedContentIdRef.current = null;
-              startMutation.mutate({ personalized_content_id: contentId });
-            }}
-            className="rounded-full bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] px-6 py-3 font-semibold text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] transition hover:brightness-105 active:scale-[0.98]"
-          >
-            Try again
-          </button>
-          <Link
-            to="/dashboard"
-            className="rounded-full border border-sky-100 bg-white px-6 py-3 font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   if (!content || !profile || !supportAllocation || !supports) {
     return (
-      <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold text-ink">Preparing lesson</h1>
-        <p className="mt-3 text-slate-600">
-          Readable is shaping the support stack for this student and loading the personalized passage.
-        </p>
+      <div className="mx-auto max-w-2xl card-clean p-12 text-center">
+        <div className="flex justify-center mb-8">
+           <div className="h-16 w-16 rounded-2xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full border-4 border-sky-500 border-t-transparent animate-spin" />
+           </div>
+        </div>
+        <h1 className="text-3xl font-black text-slate-900">Preparing Your Quest</h1>
+        <p className="mt-4 text-xl font-bold text-slate-400">Loading your personalized reading supports...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-sky-500">Readable Studio</p>
-            <h1 className="mt-3 text-3xl font-semibold text-ink lg:text-[2.2rem]">
-              A clean lesson space, already tuned to this reader.
-            </h1>
-            <p className="mt-3 max-w-2xl text-[0.98rem] leading-8 text-slate-600">
-              {supportAllocation.supportReason}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {supportAllocation.supportLabels.map((label) => (
-                <span
-                  key={label}
-                  className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm"
-                >
-                  {label}
-                </span>
-              ))}
-              <span className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
-                Gaze-guided ruler
-              </span>
-              <span className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
-                Real-time phonetic whisper
-              </span>
-            </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-              <span className="rounded-full bg-[#eef6ff] px-4 py-2 font-medium text-sea ring-1 ring-sea/10">Lesson {lessonId}</span>
-              <span className="rounded-full bg-white px-4 py-2 font-medium shadow-sm ring-1 ring-sky-100">
-                {content.segments.length} guided segments
-              </span>
-              <span className="rounded-full bg-white px-4 py-2 font-medium shadow-sm ring-1 ring-sky-100">
-                Fixation help triggers after 1.2s
-              </span>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
-              <p className="text-sm font-medium text-slate-500">Reading level</p>
-              <p className="mt-2 text-2xl font-semibold text-ink">
-                {profile.reading_level ?? "Pending"}
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
-              <p className="text-sm font-medium text-slate-500">Target pace</p>
-              <p className="mt-2 text-2xl font-semibold text-ink">
-                {supportAllocation.targetWpm} WPM
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
-              <p className="text-sm font-medium text-slate-500">Difficult words</p>
-              <p className="mt-2 text-2xl font-semibold text-ink">
-                {supportAllocation.glossary.length}
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-sky-100 bg-white/60 p-5 backdrop-blur">
-              <p className="text-sm font-medium text-slate-500">Whisper readiness</p>
-              <p className="mt-2 text-2xl font-semibold text-ink">
-                {tracker.status === "connected" ? "Live" : "Warming"}
-              </p>
-            </div>
-          </div>
+    <div className="space-y-8 py-4 max-w-7xl mx-auto px-4 lg:px-8">
+      <header className="flex items-center gap-4 card-clean p-4 px-6 bg-white">
+        <div className="p-2.5 bg-sky-100 rounded-xl">
+           <FileText className="w-5 h-5 text-sky-600" />
         </div>
-      </section>
-
-      {startMutation.isError ? <ErrorBanner message={getErrorMessage(startMutation.error)} /> : null}
-      {submitMutation.isError ? <ErrorBanner message={getErrorMessage(submitMutation.error)} /> : null}
-
-      <section className="grid gap-6 xl:grid-cols-[0.88fr,1.12fr]">
-        <div className="space-y-6">
-          {supports.glossary && supportAllocation.glossary.length > 0 ? (
-            <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-ink">Vocabulary preview</h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    A gentle warm-up before the reading begins.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSupports((current) =>
-                      current ? { ...current, glossary: !current.glossary } : current,
-                    )
-                  }
-                  className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                    supports.glossary
-                      ? "bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] active:scale-[0.98]"
-                      : "border border-sky-100 bg-white text-slate-600 shadow-sm active:scale-[0.98]"
-                  }`}
-                >
-                  {supports.glossary ? "Glossary On" : "Glossary Off"}
-                </button>
-              </div>
-              <div className="mt-6 grid gap-4">
-                {supportAllocation.glossary.map((entry) => (
-                  <div
-                    key={entry.word}
-                    className="rounded-[1.5rem] border border-sky-100 bg-white p-5 shadow-sm transition hover:shadow-soft"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-lg font-semibold text-ink">{entry.word}</p>
-                        {entry.syllables ? (
-                          <p className="mt-1 text-sm font-semibold tracking-wide text-sea">{entry.syllables}</p>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => speakText(entry.word, speechRate)}
-                        className="rounded-full border border-sky-100 bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
-                      >
-                        Hear
-                      </button>
-                    </div>
-                    <p className="mt-3 font-medium text-sm leading-relaxed text-slate-700">{entry.simpleDefinition}</p>
-                    <p className="mt-2 text-sm text-slate-500">{entry.cue}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-ink">Support stack</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Readable chooses a starting set, and the student can gently tune it for this session.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSummary((current) => !current)}
-                className="rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
-              >
-                {showSummary ? "Hide Summary" : "Plain Summary"}
-              </button>
-            </div>
-
-            {showSummary ? (
-              <div className="mt-5 rounded-[1.5rem] bg-[#eef6ff] p-5 text-sm font-medium leading-relaxed text-slate-700 ring-1 ring-sea/10">
-                {supportAllocation.summary}
-              </div>
-            ) : null}
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {([
-                ["phonics", "Phonics"],
-                ["audio", "Audio"],
-                ["lineFocus", "Line focus"],
-                ["pacer", "Pacer"],
-                ["bionic", "Anchor bolding"],
-              ] as const).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() =>
-                    setSupports((current) =>
-                      current ? { ...current, [key]: !current[key] } : current,
-                    )
-                  }
-                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                    supports[key]
-                      ? "bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-white shadow-sm"
-                      : "border border-sky-100 bg-white text-slate-600 hover:text-ink"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() =>
-                  speakText(content.segments[activeLineIndex] ?? content.segments[0] ?? "", speechRate)
-                }
-                className="rounded-[1.2rem] bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] px-4 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] transition hover:brightness-105 active:scale-[0.98]"
-              >
-                Read active line
-              </button>
-              <button
-                type="button"
-                onClick={() => speakText(content.segments.join(" "), speechRate)}
-                className="rounded-[1.2rem] border border-sky-100 bg-white px-4 py-3 text-sm font-semibold tracking-wide text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
-              >
-                Echo full passage
-              </button>
-            </div>
-
-            <div className="mt-6">
-              <div className="mb-2 flex items-center justify-between text-sm font-medium text-slate-500">
-                <span>Voice speed</span>
-                <span className="text-sea">{speechRate.toFixed(2)}x</span>
-              </div>
-              <input
-                type="range"
-                min="0.7"
-                max="1.15"
-                step="0.05"
-                value={speechRate}
-                onChange={(event) => setSpeechRate(Number(event.target.value))}
-                className="w-full accent-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)]"
-              />
-            </div>
-
-            <div className="mt-6 grid gap-3 rounded-[1.5rem] bg-white p-5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-sky-100">
-              <div className="flex items-center justify-between gap-4">
-                <span>Eye tracker</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
-                  {tracker.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span>Speech monitor</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
-                  {isRecording ? (isSpeechSilent ? "Listening for voice" : "Voice detected") : "Idle"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span>Phonetic whisper</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
-                  {phoneticAssist ? "Helping now" : "Ready"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span>Re-read events</span>
-                <span className="rounded-full bg-white px-3 py-1.5 font-bold text-ink ring-1 ring-sky-100">
-                  {reReadEvents.length}
-                </span>
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-black text-slate-900">{content.title || "Placeholder Lesson Name"}</h1>
+          <span className="text-sm font-bold text-slate-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </div>
+      </header>
 
-        <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
-          <div className="flex flex-col gap-4 border-b border-sky-100 pb-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-ink">Adaptive reading surface</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                A quieter, more supportive reading canvas with phonics help, touch audio, visual anchors, and live hesitation rescue.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="rounded-full bg-[#eef6ff] px-4 py-2 text-sm font-semibold text-sea ring-1 ring-sea/10">
-                Active line {activeLineIndex + 1} / {readerLines.length}
-              </div>
-              <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-sky-100 shadow-sm">
-                {supports.lineFocus ? "Line focus on" : "Free reading mode"}
-              </div>
-            </div>
-          </div>
-
-          <div
-            ref={readingSurfaceRef}
-            className="relative mt-6 rounded-[2rem] border border-sky-50 bg-white p-6 shadow-sm"
-            style={{
-              fontFamily: supports.bionic
-                ? `"Lexend", "Trebuchet MS", "Segoe UI", sans-serif`
-                : `"Lexend", "Segoe UI", "Trebuchet MS", sans-serif`,
-            }}
-          >
-            {gazeRulerActive ? (
-              <div
-                className={`pointer-events-none absolute left-4 right-4 z-0 rounded-[1.5rem] bg-[#eef6ff] ring-1 ring-sea/10 transition-[top,height,opacity] duration-75 ease-out ${
-                  readingRuler.visible ? "opacity-100" : "opacity-0"
-                }`}
-                style={{
-                  top: readingRuler.top,
-                  height: readingRuler.height,
-                }}
-              />
-            ) : null}
-            {phoneticAssist ? (
-              <div
-                className="pointer-events-none absolute z-10 w-[min(320px,82vw)] -translate-x-1/2 -translate-y-full rounded-[1.5rem] border border-white/80 bg-white/90 p-5 shadow-soft backdrop-blur"
-                style={{ left: phoneticAssist.left, top: phoneticAssist.top }}
-              >
-                <p className="text-[0.72rem] font-bold uppercase tracking-widest text-sky-500">
-                  Hesitation detected...
-                </p>
-                <div className="mt-2 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xl font-semibold text-ink">{phoneticAssist.word}</p>
-                    <p className="mt-1 text-sm font-semibold text-sea">
-                      {phoneticAssist.syllables.join("·")}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-[#eef6ff] px-3 py-1.5 text-xs font-semibold text-sea ring-1 ring-sea/10">
-                    whisper
-                  </span>
-                </div>
-                <p className="mt-3 text-base font-medium text-slate-700">{phoneticAssist.ipa}</p>
-                <p className="mt-2 text-sm text-slate-500">
-                  onset-rime:{" "}
-                  <span className="font-semibold text-ink">{phoneticAssist.onset}</span>
-                  {" – "}
-                  <span className="font-semibold text-ink">{phoneticAssist.rime}</span>
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] bg-[#f7fbff] px-5 py-4 text-sm font-medium text-slate-500 ring-1 ring-sky-50">
-              <p>
-                Hold your gaze on a hard word for a moment and Readable softly reveals the pronunciation.
-              </p>
-              <p className="font-semibold text-sea">Target pace {supportAllocation.targetWpm} WPM</p>
-            </div>
-
-            <div className="relative z-[1] space-y-4">
-              {readerLines.map((line, lineIndex) => {
-                const isFocusedLine = activeLineIndex === lineIndex;
-                return (
-                  <div
-                    key={`line-${lineIndex}`}
-                    ref={(element) => {
-                      lineRefs.current[lineIndex] = element;
-                    }}
-                    className={`rounded-[1.45rem] border px-5 py-5 transition ${
-                      gazeRulerActive
-                        ? isFocusedLine
-                          ? "border-sea/15 bg-white opacity-100 shadow-[0_18px_42px_-32px_rgba(47,128,237,0.32)]"
-                          : "border-transparent bg-[#f5faff] opacity-50"
-                        : "border-sky-50 bg-[#fbfdff]"
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <aside className="w-full lg:w-64 space-y-6 lg:sticky lg:top-28 flex-shrink-0">
+           <div className="card-clean p-6 bg-white">
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                <Settings2 className="w-4 h-4" /> Tools
+              </h2>
+              <div className="flex flex-col gap-3">
+                 {[
+                   ["phonics", "Phonics"],
+                   ["audio", "Echo"],
+                   ["lineFocus", "Gaze Ruler"],
+                   ["pacer", "Pacer"],
+                   ["bionic", "Bionic"]
+                 ].map(([key, label]) => (
+                   <button
+                    key={key}
+                    onClick={() => setSupports(c => c ? {...c, [key as keyof LessonSupportDefaults]: !c[key as keyof LessonSupportDefaults]} : null)}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-all border-2 ${
+                      supports[key as keyof LessonSupportDefaults] 
+                      ? "bg-sky-500 text-white border-sky-600 shadow-md shadow-sky-200" 
+                      : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
                     }`}
-                  >
-                    <div className="flex flex-wrap gap-x-2 gap-y-3 text-left">
-                      {line.map((word) => {
-                        const isActive = activeWordIndex === word.index;
-                        const wordTone = word.difficult
-                          ? "bg-[#eef6ff] text-sea ring-sky-100"
-                          : "bg-white/96 text-ink ring-sky-50";
-                        return (
-                          <button
-                            key={`${word.index}-${word.display}`}
-                            type="button"
+                   >
+                     {label}
+                     <div className={`h-2.5 w-2.5 rounded-full border-2 ${supports[key as keyof LessonSupportDefaults] ? 'bg-white border-sky-400' : 'bg-slate-200 border-slate-300'}`} />
+                   </button>
+                 ))}
+              </div>
+
+              <div className="mt-8 pt-6 border-t-2 border-slate-100">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Voice Speed</span>
+                  <span className="text-xs font-black text-sky-600">{speechRate.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.7"
+                  max="1.2"
+                  step="0.05"
+                  value={speechRate}
+                  onChange={(e) => setSpeechRate(Number(e.target.value))}
+                  className="w-full accent-sky-500"
+                />
+              </div>
+           </div>
+        </aside>
+
+        <main className="space-y-8 flex-grow w-full min-w-0">
+           <div className="card-clean p-10 lg:p-16 bg-white relative min-h-[600px] flex flex-col items-center justify-center overflow-hidden">
+              <div className="absolute top-8 right-8">
+                 <div className={`px-4 py-2 rounded-xl border-2 flex items-center gap-3 font-black uppercase tracking-widest text-[10px] ${tracker.status === 'connected' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                    <Eye className={`w-4 h-4 ${tracker.status === 'connected' ? 'animate-pulse' : ''}`} />
+                    Gaze Sync: {tracker.status}
+                 </div>
+              </div>
+
+              {supports.lineFocus && readingRuler.visible && (
+                <motion.div
+                  animate={{ top: readingRuler.top }}
+                  className="absolute left-10 right-10 bg-sky-500/10 border-y-4 border-sky-500/20 pointer-events-none z-0"
+                  style={{ height: readingRuler.height }}
+                />
+              )}
+
+              <div ref={readingSurfaceRef} className="relative z-10 w-full max-w-5xl mx-auto space-y-16 lg:space-y-24 text-center">
+                 {readerLines.map((line, li) => (
+                   <div 
+                    key={li} 
+                    ref={(el) => (lineRefs.current[li] = el)}
+                    className="relative inline-block transition-all duration-300"
+                    style={{ opacity: activeLineIndex === li || !supports.lineFocus ? 1 : 0.3 }}
+                   >
+                     <p className="text-6xl md:text-7xl lg:text-[5rem] font-black leading-[1.6] tracking-tight text-slate-700">
+                        {line.map((word, wi) => (
+                          <span
+                            key={wi}
                             data-word-index={word.index}
-                            data-line-index={word.lineIndex}
-                            onClick={() => {
-                              setActiveWordIndex(word.index);
-                              setActiveLineIndex(word.lineIndex);
-                              if (supports.audio) {
-                                speakText(word.cleaned || word.display, speechRate);
-                              }
-                              if (word.phoneticSupport) {
-                                const clickedElement = document.querySelector<HTMLElement>(
-                                  `[data-word-index="${word.index}"]`,
-                                );
-                                if (clickedElement) {
-                                  triggerPhoneticAssist(word, clickedElement);
-                                }
-                              }
-                            }}
-                            className={`rounded-[1.2rem] px-3 py-2.5 text-left align-top transition ${
-                              isActive
-                                ? "bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] ring-2 ring-sea/30"
-                                : `${wordTone} ring-1 hover:ring-sea/25`
-                            }`}
+                            data-line-index={li}
+                            className={`inline px-3 py-1 rounded-[2rem] transition-all duration-200 cursor-default ${
+                              activeWordIndex === word.index ? 'bg-sky-500 text-white shadow-2xl scale-110' : ''
+                            } ${word.difficult && !activeWordIndex === word.index ? 'text-indigo-600' : ''}`}
                           >
-                            <div className="text-[1.18rem] leading-[1.9] sm:text-[1.32rem]">
-                              {supports.bionic ? renderBionicWord(word.display) : word.display}
-                            </div>
-                            {supports.phonics && word.difficult ? (
-                              <div className="mt-2 flex flex-wrap gap-1 text-[0.68rem] font-bold uppercase tracking-widest">
-                                {word.syllables.map((syllable, syllableIndex) => (
-                                  <span
-                                    key={`${word.index}-${syllable}-${syllableIndex}`}
-                                    className={`rounded-full px-2 py-1 ${
-                                      syllableIndex % 2 === 0
-                                        ? isActive
-                                          ? "bg-white/20 text-white"
-                                          : "bg-[#eef6ff] text-sea ring-1 ring-sea/20"
-                                        : isActive
-                                          ? "bg-white/10 text-white"
-                                          : "bg-white text-slate-500 ring-1 ring-sky-100 shadow-sm"
-                                    }`}
-                                  >
-                                    {syllable}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+                            {supports.bionic ? renderBionicWord(word.display) : word.display}{" "}
+                          </span>
+                        ))}
+                     </p>
+                   </div>
+                 ))}
+              </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => setIsPacerRunning((current) => !current)}
-            className={`rounded-full px-6 py-3.5 text-sm font-semibold transition active:scale-[0.98] ${
-              isPacerRunning
-                ? "bg-rose-500 text-white shadow-[0_4px_12px_rgba(244,63,94,0.3)] hover:brightness-105"
-                : "bg-white border border-sky-100 text-slate-600 shadow-sm hover:text-ink hover:border-sky-200"
-            }`}
-          >
-            {isPacerRunning ? "Pause Pacer" : `Guide Pace at ${supportAllocation.targetWpm} WPM`}
-          </button>
-          <RecordButton
-            label="Start Reading"
-            onRecordingStateChange={setIsRecording}
-            onAudioActivityChange={setIsSpeechSilent}
-            onStop={async (file) => {
-              await submitMutation.mutateAsync(file);
-            }}
-          />
-          <Link
-            to="/dashboard"
-            className="rounded-full border border-sky-100 bg-white px-6 py-3.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-sea hover:text-sea active:scale-[0.98]"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-
-      </section>
-
-      {sessionResults ? (
-        <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-          <div className="space-y-6">
-            <ScoreCard
-              accuracy={sessionResults.accuracy_pct}
-              wpm={sessionResults.speed_wpm}
-              attention={sessionResults.attention_score}
-            />
-            <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
-              <h2 className="text-lg font-semibold text-ink">Errors and pacing</h2>
-              <ul className="mt-4 space-y-3 text-sm text-slate-600">
-                {sessionResults.errors.map((error) => (
-                  <li
-                    key={`${error.word}-${error.position}`}
-                    className="rounded-2xl border border-rose-100 bg-rose-50/50 px-5 py-4"
+              <AnimatePresence>
+                {phoneticAssist && (
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0, y: 10 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.8, opacity: 0, y: 10 }}
+                    className="absolute z-50 pointer-events-none"
+                    style={{ left: phoneticAssist.left, top: phoneticAssist.top }}
                   >
-                    <span className="font-semibold text-ink">{error.word}</span> at position{" "}
-                    {error.position + 1} was marked as{" "}
-                    <span className="font-semibold text-rose-500">{error.type}</span>.
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="rounded-[2.5rem] border border-white/80 bg-white/80 p-8 shadow-soft backdrop-blur">
-            <h2 className="text-lg font-semibold text-ink">Feedback panel</h2>
-            <div className="mt-4 space-y-3 text-sm font-medium leading-relaxed text-slate-600">
-              {attentionTips.map((tip) => (
-                <p key={tip} className="rounded-2xl border border-sky-100 bg-white px-5 py-4 shadow-sm">
-                  {tip}
-                </p>
-              ))}
-              <p className="rounded-2xl border border-amber-100 bg-amber-50/50 px-5 py-4">
-                Hesitation points: {sessionResults.hesitation_points.join(", ")}
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : null}
+                    <div className="btn-3d bg-indigo-500 border-indigo-600 text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4">
+                       <Volume2 className="w-6 h-6 animate-pulse" />
+                       <div className="text-left">
+                          <p className="text-2xl font-black leading-none">{phoneticAssist.syllables.join(' · ')}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-70">Whisper Mode</p>
+                       </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+           </div>
+
+           <div className="flex flex-col items-center gap-10">
+              <div className="flex gap-6">
+                 <button 
+                  onClick={() => setIsPacerRunning(!isPacerRunning)}
+                  className={`btn-3d flex items-center gap-3 rounded-[2rem] px-10 py-5 text-xl font-black transition-all ${
+                    isPacerRunning ? 'bg-rose-500 border-rose-600 text-white' : 'bg-emerald-500 border-emerald-600 text-white'
+                  }`}
+                 >
+                   {isPacerRunning ? <Square className="w-6 h-6 fill-current" /> : <PlayCircle className="w-6 h-6" />}
+                   {isPacerRunning ? "Stop Pacer" : "Start Pacer"}
+                 </button>
+
+                 <RecordButton
+                    isRecording={isRecording}
+                    setIsRecording={setIsRecording}
+                    onFinish={(file) => submitMutation.mutate(file)}
+                 />
+              </div>
+
+              {sessionResults && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="w-full"
+                >
+                   <ScoreCard 
+                    result={sessionResults} 
+                    profile={profile}
+                    onClose={() => setSessionResults(null)}
+                   />
+                </motion.div>
+              )}
+           </div>
+        </main>
+      </div>
     </div>
   );
 };

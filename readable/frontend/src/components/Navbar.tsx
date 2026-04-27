@@ -1,9 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-
 import { authStore } from "../stores/authStore";
-
-const baseLink =
-  "rounded-full px-4 py-2 text-sm font-medium transition hover:bg-white/80 hover:text-sea";
+import { LogOut, User } from "lucide-react";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -13,11 +10,12 @@ export const Navbar = () => {
     role === "teacher"
       ? [
           { to: "/dashboard", label: "Dashboard" },
-          { to: "/upload", label: "Upload Lesson" },
+          { to: "/upload", label: "Lessons" },
         ]
       : [
-          { to: "/dashboard", label: "Dashboard" },
-          { to: "/diagnostic", label: "Diagnostic" },
+          { to: "/dashboard", label: "Home" },
+          { to: "/progress", label: "Stats" },
+          { to: "/diagnostic", label: "Quest" },
         ];
 
   const handleLogout = () => {
@@ -26,45 +24,56 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-20 border-b border-sky-100 bg-white/70 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link to="/dashboard" className="flex items-center gap-3 text-ink">
-          <span className="flex h-11 w-11 items-center justify-center rounded-[1.2rem] bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-base font-bold text-white shadow-soft">
+    <nav className="sticky top-0 z-50 bg-white border-b-4 border-slate-100 py-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6">
+        <Link to="/dashboard" className="flex items-center gap-4 group">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-2xl font-black text-white border-b-4 border-sky-600 transition-transform group-hover:-translate-y-1">
             R
-          </span>
-          <span>
-            <span className="block text-xl font-bold tracking-tight text-ink">Readable</span>
-            <span className="block text-xs font-bold uppercase tracking-widest text-sky-500">
-              Guided Reading
+          </div>
+          <div>
+            <span className="block text-2xl font-black tracking-tight text-slate-900">Readable</span>
+            <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-sky-500">
+              Explorer Hub
             </span>
-          </span>
+          </div>
         </Link>
-        <div className="flex items-center gap-3">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `${baseLink} ${
-                  isActive
-                    ? "bg-[#eef6ff] text-sea shadow-sm ring-1 ring-sea/10"
-                    : "text-slate-500 hover:text-ink"
-                }`
-              }
+
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 mr-4 bg-slate-50 border-2 border-slate-100 rounded-2xl p-1">
+            {links.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `px-6 py-2.5 text-sm font-black uppercase tracking-widest transition-all rounded-xl ${
+                    isActive
+                      ? "bg-white text-sky-600 shadow-sm border-2 border-slate-100"
+                      : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-slate-50 border-2 border-slate-100 rounded-2xl">
+              <div className="h-8 w-8 rounded-full bg-sky-100 border-2 border-sky-200 flex items-center justify-center">
+                <User className="w-4 h-4 text-sky-600" />
+              </div>
+              <span className="text-sm font-black text-slate-700 hidden lg:block">
+                {user?.email}
+              </span>
+            </div>
+            
+            <button
+              onClick={handleLogout}
+              className="btn-3d flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
             >
-              {link.label}
-            </NavLink>
-          ))}
-          <span className="hidden items-center rounded-full border border-sky-100 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-500 shadow-sm backdrop-blur sm:flex">
-            {user?.email}
-          </span>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-full bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] px-5 py-2.5 text-sm font-semibold tracking-wide text-white shadow-[0_4px_12px_rgba(47,128,237,0.3)] transition hover:brightness-105 active:scale-[0.98]"
-          >
-            Log out
-          </button>
+              <LogOut className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
     </nav>

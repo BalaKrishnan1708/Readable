@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { motion } from "framer-motion";
 
 import { register } from "../api/auth";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -26,68 +27,91 @@ export const RegisterPage = () => {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#f7fbff_0%,#edf5ff_100%)] px-4 py-12">
-      <form
-        className="w-full max-w-xl rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur"
-        onSubmit={(event) => {
-          event.preventDefault();
-          mutation.mutate({ email, password, role });
-        }}
-      >
-        <h1 className="text-3xl font-semibold text-ink">Create an account</h1>
-        <div className="mt-8 space-y-5">
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-slate-700">Email</span>
-            <input
-              className="w-full rounded-2xl border border-sky-100 bg-white px-5 py-4 text-ink shadow-sm outline-none transition focus:border-sea focus:ring-2 focus:ring-sea/20"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
-            <input
-              type="password"
-              className="w-full rounded-2xl border border-sky-100 bg-white px-5 py-4 text-ink shadow-sm outline-none transition focus:border-sea focus:ring-2 focus:ring-sea/20"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-          <div>
-            <span className="mb-2 block text-sm font-semibold text-slate-700">Role</span>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(["student", "teacher"] as UserRole[]).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setRole(option)}
-                  className={`rounded-2xl border px-5 py-4 text-left font-semibold transition ${
-                    role === option
-                      ? "border-sea bg-[#eef6ff] text-sea ring-1 ring-sea/20"
-                      : "border-sky-100 bg-white text-slate-500 hover:border-sky-200 hover:text-ink"
-                  }`}
-                >
-                  {option === "student" ? "Student" : "Teacher"}
-                </button>
-              ))}
+    <div className="min-h-[80vh] flex items-center justify-center py-12">
+      <div className="w-full max-w-xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-clean p-12 bg-white"
+        >
+          <div className="flex justify-center mb-8">
+            <div className="h-16 w-16 rounded-2xl bg-sky-500 border-b-4 border-sky-600 flex items-center justify-center text-3xl font-black text-white">
+              R
             </div>
           </div>
-        </div>
-        {mutation.isError ? <div className="mt-5"><ErrorBanner message={getErrorMessage(mutation.error)} /></div> : null}
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="mt-8 w-full rounded-full bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] px-4 py-4 text-base font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(47,128,237,0.35)] transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
-        >
-          {mutation.isPending ? "Creating account..." : "Create account"}
-        </button>
-        <p className="mt-6 text-center text-sm font-medium text-slate-500">
-          Already have an account?{" "}
-          <Link className="font-semibold text-sea hover:underline" to="/login">
-            Log in
-          </Link>
-        </p>
-      </form>
+          
+          <h1 className="text-4xl font-black text-slate-900 text-center tracking-tight">Join the Mission</h1>
+          <p className="mt-2 text-center text-slate-400 font-bold uppercase tracking-widest text-xs mb-10">Create your explorer account</p>
+          
+          <form
+            className="space-y-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              mutation.mutate({ email, password, role });
+            }}
+          >
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
+              <input
+                className="w-full rounded-2xl border-4 border-slate-100 bg-slate-50 px-6 py-4 text-slate-900 font-bold outline-none transition focus:border-sky-200 focus:bg-white"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
+              <input
+                type="password"
+                className="w-full rounded-2xl border-4 border-slate-100 bg-slate-50 px-6 py-4 text-slate-900 font-bold outline-none transition focus:border-sky-200 focus:bg-white"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <span className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Choose Your Role</span>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(["student", "teacher"] as UserRole[]).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setRole(option)}
+                    className={`btn-3d rounded-2xl border-2 px-6 py-4 text-center font-black transition-all ${
+                      role === option
+                        ? "bg-sky-500 border-sky-600 text-white"
+                        : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-white"
+                    }`}
+                  >
+                    {option === "student" ? "I'm a Student" : "I'm a Teacher"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {mutation.isError && (
+              <div className="mt-6">
+                <ErrorBanner message={getErrorMessage(mutation.error)} />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="btn-3d w-full rounded-2xl bg-emerald-500 border-emerald-600 py-5 text-xl font-black text-white hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 mt-4"
+            >
+              {mutation.isPending ? "Creating account..." : "Start Adventure! →"}
+            </button>
+          </form>
+
+          <p className="mt-10 text-center text-slate-500 font-bold">
+            Already registered?{" "}
+            <Link className="text-sky-500 hover:underline" to="/login">
+              Log in here
+            </Link>
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 };

@@ -23,110 +23,81 @@ export const LoginPage = () => {
       navigate("/dashboard");
     },
   });
-  const mutationMessage = mutation.isError ? getErrorMessage(mutation.error) : "";
-  const looksLikeVoiceFeatureValidation =
-    mutationMessage.includes("speech_rate_wps") ||
-    mutationMessage.includes("pause_duration_ms") ||
-    mutationMessage.includes("pause_frequency") ||
-    mutationMessage.includes("mispronunciation_rate") ||
-    mutationMessage.includes("repetition_rate");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#f7fbff_0%,#edf5ff_100%)] px-4 py-12">
-      <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[1.2fr,0.8fr] items-center">
+    <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="grid w-full max-w-5xl gap-12 lg:grid-cols-2 items-center">
         
         <motion.div 
-          initial={{ opacity: 0, x: -40 }}
+          initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-center justify-center text-center p-8"
+          className="text-center lg:text-left"
         >
-          <motion.div 
-            initial={{ scale: 0.8, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
-            className="mb-8 flex h-32 w-32 items-center justify-center rounded-[2rem] bg-[linear-gradient(135deg,#2f80ed_0%,#a855f7_100%)] text-6xl font-bold text-white shadow-[0_12px_24px_rgba(168,85,247,0.4)]"
-          >
+          <div className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-sky-500 text-5xl font-black text-white border-b-8 border-sky-600 mb-10 mx-auto lg:mx-0">
             R
-          </motion.div>
-          
-          <h1 className="text-5xl font-extrabold tracking-tight text-ink">
-            Welcome to <span className="text-transparent bg-clip-text bg-[linear-gradient(135deg,#2f80ed_0%,#a855f7_100%)]">Readable!</span>
+          </div>
+          <h1 className="text-7xl font-black text-slate-900 leading-[1.1] tracking-tight">
+            Ready to <span className="text-sky-500">Read?</span>
           </h1>
-          <p className="mt-4 max-w-md text-lg font-medium text-slate-600">
-            Get ready for a fun reading adventure. Let's practice and grow your reading powers together!
+          <p className="mt-8 text-2xl font-bold text-slate-400 leading-relaxed max-w-lg">
+            Join thousands of explorers on a journey to master the art of reading!
           </p>
         </motion.div>
 
-        <motion.form
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.6, type: "spring", bounce: 0.4, delay: 0.1 }}
-          className="flex flex-col justify-center rounded-[2.5rem] border border-white/80 bg-white/80 p-10 shadow-soft backdrop-blur"
-          onSubmit={(event) => {
-            event.preventDefault();
-            mutation.mutate({ email, password });
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-clean p-12 bg-white"
         >
-          <div className="flex justify-center mb-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-[linear-gradient(135deg,#2f80ed_0%,#4fa6ff_100%)] text-2xl font-bold text-white shadow-soft">
-              R
-            </div>
-          </div>
-          <h2 className="text-center text-3xl font-bold text-ink">Let's Go!</h2>
-          <p className="mt-2 text-center text-sm font-medium text-slate-500">
-            Sign in to see your reading dashboard.
-          </p>
+          <h2 className="text-3xl font-black text-slate-800 text-center mb-2">Welcome Back!</h2>
+          <p className="text-center text-slate-400 font-bold uppercase tracking-widest text-xs mb-10">Sign in to your account</p>
           
-          <div className="mt-8 space-y-5">
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-slate-700">Email Address</span>
+          <form
+            className="space-y-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              mutation.mutate({ email, password });
+            }}
+          >
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
               <input
-                className="w-full rounded-2xl border border-sky-100 bg-white px-5 py-4 text-ink shadow-sm outline-none transition focus:border-sea focus:ring-4 focus:ring-sea/20"
+                className="w-full rounded-2xl border-4 border-slate-100 bg-slate-50 px-6 py-4 text-slate-900 font-bold outline-none transition focus:border-sky-200 focus:bg-white"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
               />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-slate-700">Secret Password</span>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
               <input
                 type="password"
-                className="w-full rounded-2xl border border-sky-100 bg-white px-5 py-4 text-ink shadow-sm outline-none transition focus:border-sea focus:ring-4 focus:ring-sea/20"
+                className="w-full rounded-2xl border-4 border-slate-100 bg-slate-50 px-6 py-4 text-slate-900 font-bold outline-none transition focus:border-sky-200 focus:bg-white"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
-          </div>
-          
-          {mutation.isError ? (
-            <div className="mt-5 space-y-2">
-              <ErrorBanner
-                message={
-                  looksLikeVoiceFeatureValidation
-                    ? "Login request reached a non-auth endpoint. Check API base URL/server route configuration."
-                    : mutationMessage
-                }
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-          ) : null}
-          
-          <motion.button
-            whileHover={{ scale: 1.02, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={mutation.isPending}
-            className="mt-8 w-full rounded-full bg-[linear-gradient(135deg,#2f80ed_0%,#a855f7_100%)] px-4 py-4 text-lg font-bold tracking-wide text-white shadow-[0_6px_20px_rgba(168,85,247,0.35)] transition disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
-          >
-            {mutation.isPending ? "Logging in..." : "Start Playing"}
-          </motion.button>
-          
-          <p className="mt-6 text-center text-sm font-bold text-slate-500">
-            Need an account?{" "}
-            <Link className="text-sea hover:text-purple-500 hover:underline transition" to="/register">
-              Ask your teacher!
+
+            {mutation.isError && (
+              <ErrorBanner message={getErrorMessage(mutation.error)} />
+            )}
+
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="btn-3d w-full rounded-2xl bg-sky-500 border-sky-600 py-5 text-xl font-black text-white hover:bg-sky-400 active:bg-sky-600 disabled:opacity-50"
+            >
+              {mutation.isPending ? "Connecting..." : "Let's Go! →"}
+            </button>
+          </form>
+
+          <p className="mt-8 text-center text-slate-500 font-bold">
+            New here?{" "}
+            <Link className="text-sky-500 hover:underline" to="/register">
+              Create an account
             </Link>
           </p>
-        </motion.form>
+        </motion.div>
       </div>
     </div>
   );
