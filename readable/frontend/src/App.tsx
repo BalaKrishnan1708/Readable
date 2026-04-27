@@ -15,15 +15,36 @@ import { PlanetLessonPage } from "./pages/PlanetLessonPage";
 import { LessonPage } from "./pages/LessonPage";
 import { UploadPage } from "./pages/UploadPage";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
+import { ReaderPage } from "./pages/ReaderPage";
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/";
+  const isFullscreen = location.pathname === "/reader";
+
+  // Fullscreen pages bypass the shell entirely
+  if (isFullscreen) {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  const isLessonPage = location.pathname.startsWith("/lesson/");
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-sky-100 selection:text-sky-900 transition-colors duration-500 bg-grid-pattern">
       {!isAuthPage && <Navbar />}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className={`mx-auto py-8 ${isLessonPage ? 'w-full px-2 sm:px-4' : 'max-w-7xl px-4 sm:px-6 lg:px-8'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -60,6 +81,7 @@ function App() {
           <Route path="/lesson/:id" element={<LessonPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/students/:id" element={<StudentDetailPage />} />
+          <Route path="/reader" element={<ReaderPage />} />
         </Routes>
       </AppShell>
       <Toaster 

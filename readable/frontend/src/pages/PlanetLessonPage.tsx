@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Rocket } from "lucide-react";
+import { ConceptMap } from "../components/Lesson/ConceptMap";
 
 const planets = [
   {
@@ -158,9 +159,7 @@ export const PlanetLessonPage = () => {
                   {planet.description}
                 </p>
                 <div className="pt-6">
-                  <span className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-xs font-black uppercase tracking-[0.2em] text-sky-400 backdrop-blur-md">
-                    Scanning Mission...
-                  </span>
+                  <ConceptMap text={planet.description} colorClass={planet.color} />
                 </div>
               </div>
             </motion.section>

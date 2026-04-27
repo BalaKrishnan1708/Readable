@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -8,8 +8,7 @@ import {
   Award, 
   Sparkles, 
   Mic,
-  Activity,
-  ArrowRight
+  Activity
 } from "lucide-react";
 
 import { startDiagnostic, submitDiagnostic } from "../api/sessions";
@@ -22,6 +21,13 @@ import { authStore } from "../stores/authStore";
 import type { SessionResult } from "../types/session";
 
 const PHONICS_WORDS = ["Bright", "Sparkle", "Center"];
+
+// Phonetic syllable breakdown for each word (shown after first failed attempt)
+const PHONICS_BREAKDOWN: Record<string, string[]> = {
+  Bright:  ["br", "igh", "t"],
+  Sparkle: ["sp", "ar", "k", "le"],
+  Center:  ["cen", "ter"],
+};
 
 export const DiagnosticPage = () => {
   const queryClient = useQueryClient();
@@ -92,7 +98,6 @@ export const DiagnosticPage = () => {
         
         // Transition to phonics ONLY after audio is ready
         setPhase("phonics");
-        startPhonicsCountdown();
       };
 
       recorder.start(1000); // Send data every 1 second
@@ -111,32 +116,32 @@ export const DiagnosticPage = () => {
     tracker.stopTracking();
   };
 
-  const startPhonicsCountdown = useCallback(() => {
-    let count = 3;
-    setCountdown(count);
-    const interval = setInterval(() => {
-      count -= 1;
-      if (count > 0) {
-        setCountdown(count);
-      } else {
-        clearInterval(interval);
-        setCountdown(null);
-        speakPhonics(PHONICS_WORDS[phonicsStep]);
-      }
-    }, 1000);
-  }, [phonicsStep]);
+  // ─── Phonics State Machine ────────────────────────────────────────────────
+  type PhonicsState = "idle" | "mic-request" | "countdown" | "speak" | "recording" | "checking";
+  const [phonicsState, setPhonicsState] = useState<PhonicsState>("idle");
+  const [wordTimer, setWordTimer] = useState(3);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const phonicsStreamRef = useRef<MediaStream | null>(null);
+  const phonicsStepRef = useRef(0);
+  // phonicsRound is the ONLY trigger for the main effect — incrementing it restarts the word flow
+  const [phonicsRound, setPhonicsRound] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState(0); // per-word failure count
 
   const speakPhonics = (word: string) => {
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(word);
     utterance.rate = 0.8;
     window.speechSynthesis.speak(utterance);
   };
 
   const completePhonics = () => {
-    const finalAudio = audioBlob 
+    if (phonicsStreamRef.current) {
+      phonicsStreamRef.current.getTracks().forEach(t => t.stop());
+      phonicsStreamRef.current = null;
+    }
+    const finalAudio = audioBlob
       ? new File([audioBlob], "session.wav", { type: "audio/wav" })
       : new File([], "silent.wav", { type: "audio/wav" });
-
     if (startMutation.data) {
       submitMutation.mutate({
         sessionId: startMutation.data.session_id,
@@ -145,6 +150,163 @@ export const DiagnosticPage = () => {
       });
     }
   };
+
+  function sleep(ms: number) { return new Promise<void>(r => setTimeout(r, ms)); }
+
+  // Step 1: request mic once when phonics phase starts
+  useEffect(() => {
+    if (phase !== "phonics") return;
+    
+    // Reset all phonics-related states
+    setPhonicsStep(0);
+    phonicsStepRef.current = 0;
+    setFailedAttempts(0);
+    setCountdown(null);
+    setLiveTranscript("");
+    
+    console.log("[Phonics] Phase started, requesting mic in 500ms...");
+    setPhonicsState("mic-request");
+    
+    const timer = setTimeout(() => {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          console.log("[Phonics] Mic obtained, starting round 1");
+          phonicsStreamRef.current = stream;
+          setPhonicsState("countdown"); // Immediate feedback
+          setPhonicsRound(1);
+        })
+        .catch(err => {
+          console.error("[Phonics] Microphone denied:", err);
+          setPhonicsState("idle");
+        });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // Step 2: main word flow — only re-runs when phonicsRound changes
+  useEffect(() => {
+    if (phase !== "phonics" || phonicsRound === 0 || !phonicsStreamRef.current) return;
+
+    const stream = phonicsStreamRef.current;
+    const currentStep = phonicsStepRef.current;
+    const target = PHONICS_WORDS[currentStep].toLowerCase().replace(/[^a-z]/g, "");
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : "audio/webm";
+
+    let cancelled = false;
+
+    const run = async () => {
+      // ── Countdown 3-2-1 (800ms each = 2.4s total) ──
+      for (let i = 3; i >= 1; i--) {
+        if (cancelled) return;
+        setPhonicsState("countdown");
+        setCountdown(i);
+        await sleep(800);
+      }
+      if (cancelled) return;
+      setCountdown(null);
+
+      // ── Show word, start recording immediately (no initial audio) ──
+      setPhonicsState("speak");
+      await sleep(400); // brief moment to show the word
+
+      // ── Record → Check loop ──
+      let attemptCount = 0;
+      while (!cancelled) {
+        setPhonicsState("recording");
+        setWordTimer(3);
+        const chunks: Blob[] = [];
+        const recorder = new MediaRecorder(stream, { mimeType });
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+        // Record for 3 seconds
+        await new Promise<void>(resolve => {
+          recorder.onstop = () => resolve();
+          recorder.start();
+          let t = 3;
+          const tick = setInterval(() => {
+            if (cancelled) { clearInterval(tick); if (recorder.state === "recording") recorder.stop(); return; }
+            t -= 1;
+            setWordTimer(t);
+            if (t <= 0) { clearInterval(tick); if (recorder.state === "recording") recorder.stop(); }
+          }, 1000);
+        });
+
+        if (cancelled) return;
+        if (chunks.length === 0) { await sleep(200); continue; }
+
+        // ── Send to Whisper ──
+        setPhonicsState("checking");
+        setLiveTranscript("");
+        try {
+          const blob = new Blob(chunks, { type: mimeType });
+          const { transcribePhonics } = await import("../api/sessions");
+          const result = await transcribePhonics(blob);
+          if (cancelled) return;
+
+          const transcript = (result.text || "").toLowerCase();
+          setLiveTranscript(transcript);
+          const clean = transcript.replace(/[^a-z\s]/g, "").trim();
+          const words = clean.split(/\s+/);
+          console.log(`[Phonics] attempt=${attemptCount + 1} target="${target}" heard="${clean}"`);
+
+          if (words.includes(target) || clean.includes(target)) {
+            // ✅ Match — advance to next word
+            cancelled = true;
+            setFailedAttempts(0);
+            const nextStep = currentStep + 1;
+            if (nextStep < PHONICS_WORDS.length) {
+              phonicsStepRef.current = nextStep;
+              setPhonicsStep(nextStep);
+              setPhonicsRound(r => r + 1);
+            } else {
+              completePhonics();
+            }
+            return;
+          }
+
+          // ❌ No match
+          attemptCount += 1;
+          setFailedAttempts(attemptCount);
+
+          if (attemptCount >= 3) {
+            // 3rd failure — speak word aloud, then auto-advance
+            setPhonicsState("speak");
+            speakPhonics(PHONICS_WORDS[currentStep]);
+            await sleep(1600);
+            if (cancelled) return;
+            cancelled = true;
+            setFailedAttempts(0);
+            const nextStep = currentStep + 1;
+            if (nextStep < PHONICS_WORDS.length) {
+              phonicsStepRef.current = nextStep;
+              setPhonicsStep(nextStep);
+              setPhonicsRound(r => r + 1);
+            } else {
+              completePhonics();
+            }
+            return;
+          }
+
+
+        } catch (err) {
+          console.error("[Phonics] Transcription error:", err);
+        }
+        await sleep(200);
+      }
+    };
+
+    run();
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phonicsRound, phase]);
+
+  // keep ref in sync with state
+  useEffect(() => { phonicsStepRef.current = phonicsStep; }, [phonicsStep]);
 
   const passage = startMutation.data?.expected_text;
   const passageParagraphs = useMemo(() => {
@@ -407,60 +569,137 @@ export const DiagnosticPage = () => {
       {phase === "phonics" ? (
         <section className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-sky-500 text-white p-10">
           <AnimatePresence mode="wait">
-            {countdown !== null ? (
-              <motion.div
-                key="countdown"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 2, opacity: 0 }}
+
+            {/* ── Mic Permission ── */}
+            {(phonicsState === "idle" || phonicsState === "mic-request") && (
+              <motion.div key="mic-req" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
+                <div className="h-32 w-32 rounded-full bg-sky-400 border-4 border-white/40 flex items-center justify-center mx-auto mb-8 animate-pulse">
+                  <Mic className="w-16 h-16" />
+                </div>
+                <p className="text-4xl font-black">Setting Up Microphone…</p>
+                <p className="text-xl text-sky-100 mt-4 font-semibold">Please allow microphone access when the browser asks.</p>
+              </motion.div>
+            )}
+
+            {/* ── Countdown ── */}
+            {phonicsState === "countdown" && countdown !== null && (
+              <motion.div 
+                key={`cd-${countdown}`} 
+                initial={{ scale: 0.5, opacity: 0 }} 
+                animate={{ scale: 1, opacity: 1 }} 
+                exit={{ scale: 2, opacity: 0 }} 
+                transition={{ duration: 0.4 }}
                 className="text-center"
               >
                 <p className="text-3xl font-black uppercase tracking-[0.5em] mb-12">Get Ready!</p>
                 <span className="text-[25rem] font-black leading-none drop-shadow-2xl">{countdown}</span>
               </motion.div>
-            ) : (
-              <motion.div
-                key="word-display"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="w-full max-w-4xl text-center"
-              >
-                <p className="text-2xl font-black uppercase tracking-[0.5em] mb-16 text-sky-100">Repeat after me!</p>
-                
-                <div className="card-clean p-24 bg-white text-slate-900 border-none shadow-[0_20px_0_0_#0ea5e9]">
-                  <h3 className="text-[10rem] font-black leading-tight tracking-tight mb-12">
-                    {PHONICS_WORDS[phonicsStep]}
-                  </h3>
-                  <button 
-                    onClick={() => speakPhonics(PHONICS_WORDS[phonicsStep])}
-                    className="btn-3d rounded-2xl bg-sky-100 border-sky-200 px-10 py-5 text-xl font-black text-sky-600"
-                  >
-                    Listen Again 🔊
-                  </button>
+            )}
+
+            {/* ── Word Display (recording + checking) ── */}
+            {(phonicsState === "recording" || phonicsState === "checking" || phonicsState === "speak") && (
+              <motion.div key="word-display" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-4xl text-center">
+
+                {/* Status badge */}
+                <div className="flex justify-between items-center w-full max-w-2xl mx-auto mb-12">
+                  <p className="text-2xl font-black uppercase tracking-[0.5em] text-sky-100">Repeat after me!</p>
+                  <AnimatePresence mode="wait">
+                    {phonicsState === "recording" && (
+                      <motion.div key="rec" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                        className="flex items-center gap-3 bg-rose-500 text-white px-5 py-2 rounded-full shadow-xl border-2 border-rose-300">
+                        <span className="h-3 w-3 rounded-full bg-white animate-ping inline-block" />
+                        <span className="text-base font-black tracking-widest uppercase">Recording</span>
+                        <span className="text-base font-black bg-rose-700 px-2 rounded-full">{wordTimer}s</span>
+                      </motion.div>
+                    )}
+                    {phonicsState === "checking" && (
+                      <motion.div key="chk" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                        className="flex items-center gap-3 bg-amber-400 text-amber-900 px-5 py-2 rounded-full shadow-xl border-2 border-amber-200">
+                        <span className="h-4 w-4 rounded-full border-2 border-amber-900 border-t-transparent animate-spin inline-block" />
+                        <span className="text-base font-black tracking-widest uppercase">Checking AI…</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                <div className="mt-20 flex justify-between items-center w-full max-w-2xl mx-auto">
-                  <div className="flex gap-4">
-                    {PHONICS_WORDS.map((_, i) => (
-                      <div key={i} className={`h-4 w-12 rounded-full border-2 border-white/50 ${i <= phonicsStep ? 'bg-white' : 'bg-white/20'}`} />
-                    ))}
+                {/* Word card */}
+                <div className="card-clean p-16 bg-white text-slate-900 border-none shadow-[0_20px_0_0_#0ea5e9] relative overflow-hidden">
+                  {/* Recording pulse overlay */}
+                  {phonicsState === "recording" && (
+                    <div className="absolute inset-0 rounded-[inherit] border-4 border-rose-400 animate-pulse pointer-events-none" />
+                  )}
+
+                  <h3 className="text-[8rem] font-black leading-tight tracking-tight mb-4">
+                    {PHONICS_WORDS[phonicsStep]}
+                  </h3>
+
+                  {/* Phonetic breakdown — shown after first failure */}
+                  <AnimatePresence>
+                    {failedAttempts > 0 && PHONICS_BREAKDOWN[PHONICS_WORDS[phonicsStep]] && (
+                      <motion.div
+                        key={`breakdown-${phonicsStep}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.4 }}
+                        className="mb-6"
+                      >
+                        <p className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">
+                          Try saying it in parts:
+                        </p>
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                          {PHONICS_BREAKDOWN[PHONICS_WORDS[phonicsStep]].map((syllable, idx, arr) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <motion.button
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: idx * 0.12, type: "spring", stiffness: 300 }}
+                                onClick={() => speakPhonics(syllable)}
+                                className="px-5 py-3 rounded-2xl bg-sky-50 border-2 border-b-4 border-sky-200 text-sky-700 text-3xl font-black tracking-wide hover:bg-sky-100 active:border-b-2 transition-all shadow-sm select-none"
+                              >
+                                {syllable}
+                              </motion.button>
+                              {idx < arr.length - 1 && (
+                                <span className="text-slate-300 text-2xl font-black">·</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.6 }}
+                          className="text-xs text-slate-400 mt-3 font-semibold"
+                        >
+                          Tap each part to hear it, then say the whole word!
+                        </motion.p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (phonicsStep < PHONICS_WORDS.length - 1) {
-                        setPhonicsStep(s => s + 1);
-                        startPhonicsCountdown();
-                      } else {
-                        completePhonics();
-                      }
-                    }}
-                    className="btn-3d rounded-2xl bg-emerald-400 border-emerald-500 px-12 py-6 text-2xl font-black text-white hover:bg-emerald-300"
-                  >
-                    {phonicsStep < PHONICS_WORDS.length - 1 ? "Next Word" : "I'm Done! ✨"}
-                  </button>
+
+                {/* Progress dots */}
+                <div className="mt-10 flex justify-center gap-4">
+                  {PHONICS_WORDS.map((_, i) => (
+                    <div key={i} className={`h-4 w-12 rounded-full border-2 border-white/50 transition-all duration-300 ${i < phonicsStep ? 'bg-emerald-400' : i === phonicsStep ? 'bg-white' : 'bg-white/20'}`} />
+                  ))}
                 </div>
+
+                {/* Live transcript */}
+                <div className="mt-6 h-10 flex justify-center items-center">
+                  <AnimatePresence>
+                    {liveTranscript && (
+                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        className="bg-black/20 backdrop-blur-sm px-6 py-2 rounded-2xl border border-white/20 text-white font-medium text-base max-w-lg truncate">
+                        🎙️ "{liveTranscript}"
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
               </motion.div>
             )}
+
           </AnimatePresence>
         </section>
       ) : null}

@@ -60,3 +60,32 @@ export const submitReading = async (
   );
   return data;
 };
+
+export type ConceptNode = {
+  id: string;
+  label: string;
+  type: string;
+};
+
+export type ConceptEdge = {
+  source: string;
+  target: string;
+  label: string;
+};
+
+export type VisualizeResponse = {
+  nodes: ConceptNode[];
+  edges: ConceptEdge[];
+};
+
+export const visualizeParagraph = async (text: string): Promise<VisualizeResponse> => {
+  const { data } = await apiClient.post<VisualizeResponse>("/sessions/reading/visualize", { text });
+  return data;
+};
+
+export const transcribePhonics = async (audioFile: Blob): Promise<{ text: string }> => {
+  const formData = new FormData();
+  formData.append("audio_file", audioFile, "phonics.wav");
+  const { data } = await apiClient.post<{ text: string }>("/sessions/diagnostic/phonics/transcribe", formData);
+  return data;
+};

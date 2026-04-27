@@ -78,3 +78,24 @@ class ReadingSubmitResponse(BaseModel):
     result: SessionResultPayload
     profile: StudentProfileResponse
     progress_entry_id: int
+
+
+class ConceptNode(BaseModel):
+    id: str
+    label: str
+    type: str
+
+
+class ConceptEdge(BaseModel):
+    source: str
+    target: str
+    label: str
+
+
+class VisualizeRequest(BaseModel):
+    text: str
+
+
+class VisualizeResponse(BaseModel):
+    nodes: list[ConceptNode]
+    edges: list[ConceptEdge]

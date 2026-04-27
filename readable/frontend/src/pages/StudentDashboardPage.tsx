@@ -62,9 +62,18 @@ export const StudentDashboardPage = () => {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-3xl border-2 border-orange-200">
+              <motion.button 
+                whileHover={{ scale: 1.1, rotate: 15 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => {
+                  import("react-hot-toast").then((module) => {
+                    module.default.success("Streak protected! Keep reading every day.", { icon: "🔥", style: { borderRadius: '1rem', border: '2px solid #fdba74' } });
+                  });
+                }}
+                className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-3xl border-2 border-orange-200 shadow-sm cursor-pointer"
+              >
                 🔥
-              </div>
+              </motion.button>
               <div>
                 <h3 className="text-2xl font-black text-slate-900">7 Day Streak!</h3>
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">Keep it up!</p>

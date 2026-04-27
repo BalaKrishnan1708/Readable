@@ -1,39 +1,65 @@
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
-import type { ProgressEntry } from "../types/profile";
-
 interface ProgressChartProps {
-  data: ProgressEntry[];
+  data: { label?: string; date?: string; accuracy: number; accuracy_trend?: number }[];
 }
 
 export const ProgressChart = ({ data }: ProgressChartProps) => {
-  const chartData = [...data]
-    .reverse()
-    .map((entry, index) => ({ label: `S${index + 1}`, accuracy: entry.accuracy_trend }));
+  const chartData = [...data].map((entry, index) => ({
+    label: entry.label || entry.date || `S${index + 1}`,
+    accuracy: entry.accuracy_trend ?? entry.accuracy,
+  }));
 
   return (
-    <div className="rounded-3xl bg-white p-5 shadow-soft">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-ink">Accuracy trend</h3>
-        <p className="text-sm text-slate-500">Last ten sessions across guided reading practice.</p>
-      </div>
-      <div className="h-64">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
-            <XAxis dataKey="label" stroke="#64748b" />
-            <YAxis domain={[0, 100]} stroke="#64748b" />
-            <Tooltip />
-            <Line type="monotone" dataKey="accuracy" stroke="#0f766e" strokeWidth={3} />
-          </LineChart>
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" vertical={false} />
+            <XAxis 
+              dataKey="label" 
+              stroke="#94a3b8" 
+              tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
+              tickLine={false}
+              axisLine={false}
+              dy={10}
+            />
+            <YAxis 
+              domain={[60, 100]} 
+              stroke="#94a3b8"
+              tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
+              tickLine={false}
+              axisLine={false}
+              dx={-10}
+            />
+            <Tooltip 
+              contentStyle={{ borderRadius: '1rem', border: '2px solid #e2e8f0', fontWeight: 'bold', color: '#334155', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              itemStyle={{ color: '#0ea5e9', fontWeight: 900 }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="accuracy" 
+              stroke="#0ea5e9" 
+              strokeWidth={4}
+              fillOpacity={1} 
+              fill="url(#colorAccuracy)" 
+              activeDot={{ r: 6, fill: "#0ea5e9", stroke: "#fff", strokeWidth: 3 }}
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

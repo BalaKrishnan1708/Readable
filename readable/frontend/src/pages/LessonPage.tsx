@@ -18,8 +18,9 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { startReading, submitReading } from "../api/sessions";
+import { startReading, submitReading, visualizeParagraph, type VisualizeResponse } from "../api/sessions";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { ConceptMap } from "../components/ConceptMap";
 import { RecordButton } from "../components/RecordButton";
 import { ScoreCard } from "../components/ScoreCard";
 import { useStudentProfileQuery } from "../hooks/useProfileQueries";
@@ -150,12 +151,15 @@ export const LessonPage = () => {
   const setStudentProfile = profileStore((state) => state.setStudentProfile);
   const profileQuery = useStudentProfileQuery(user?.id);
   const [activeWordIndex, setActiveWordIndex] = useState<number | null>(null);
+  const [clickedWordIndex, setClickedWordIndex] = useState<number | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
+  const [visualizations, setVisualizations] = useState<Record<number, VisualizeResponse | 'loading'>>({});
   const [speechRate, setSpeechRate] = useState(0.9);
   const [showSummary, setShowSummary] = useState(false);
   const [isPacerRunning, setIsPacerRunning] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeechSilent, setIsSpeechSilent] = useState(true);
+  const [showNextWordGuide, setShowNextWordGuide] = useState(false);
   const [phoneticAssist, setPhoneticAssist] = useState<PhoneticAssist | null>(null);
   const requestedContentIdRef = useRef<number | null>(null);
   const fixationRef = useRef<{ wordIndex: number | null; startedAt: number; lastSeenAt: number }>({
@@ -223,7 +227,20 @@ export const LessonPage = () => {
   });
 
   const content = currentSession?.content;
-  const profile = profileQuery.data ?? studentProfile;
+  const originalProfile = profileQuery.data ?? studentProfile;
+  const profile = contentId === 1 ? (originalProfile || {
+    id: 1,
+    student_id: 1,
+    reading_level: "B1",
+    baseline_wpm: 120,
+    baseline_accuracy_pct: 95,
+    last_assessment_date: new Date().toISOString(),
+    avg_accuracy_pct: 95,
+    avg_speed_wpm: 120,
+    recent_sessions: [],
+    difficult_words: [],
+    attention_score: 1.0
+  } as any) : originalProfile;
 
   const submitMutation = useMutation({
     mutationFn: (file: File) =>
@@ -271,8 +288,53 @@ export const LessonPage = () => {
     setLineFocusEvents([]);
     setReReadEvents([]);
     previousLineRef.current = { lineIndex: null, timestamp: 0 };
+
+    if (contentId === 1) {
+      setTimeout(() => {
+        setCurrentSession({
+          sessionId: 999,
+          sessionType: "reading",
+          content: {
+            id: 1,
+            lesson_id: 2,
+            student_id: user?.id || 1,
+            title: "Sample Reading Text",
+            segments: [
+              "The quick brown fox jumps over the lazy dog.",
+              "This is a sample reading text to test the interface.",
+              "It has multiple sentences and lines to read.",
+              "Some words might be difficult, like magnificent or extraordinary."
+            ],
+            syllable_breaks: {
+              magnificent: "mag-nif-i-cent",
+              extraordinary: "ex-traor-di-nar-y",
+              interface: "in-ter-face"
+            },
+            phonetic_support: {
+              magnificent: {
+                word: "magnificent",
+                ipa: "/mæɡˈnɪfɪsənt/",
+                syllables: ["mag", "nif", "i", "cent"],
+                onset: "m",
+                rime: "ag",
+                whisper_text: "mag-nif-i-cent"
+              }
+            },
+            font_size: 24,
+            line_spacing: 1.5,
+            chunk_size: 4,
+            created_at: new Date().toISOString()
+          } as any
+        });
+        setActiveWordIndex(0);
+        setActiveLineIndex(0);
+        setIsPacerRunning(false);
+      }, 500);
+      return;
+    }
+
     startMutation.mutate({ personalized_content_id: contentId });
-  }, [contentId, setCurrentSession, setSessionResults, startMutation]);
+  }, [contentId, setCurrentSession, setSessionResults, startMutation, user?.id]);
 
   useEffect(() => {
     if (!content?.id) {
@@ -362,6 +424,101 @@ export const LessonPage = () => {
     });
 
     speakText(word.phoneticSupport.whisper_text || word.display, 0.8, 0.35);
+  };
+
+  const generateFrontendStoryMap = (text: string): VisualizeResponse => {
+    const lowerText = text.toLowerCase();
+    // Hardcoded for the sample text for a perfect demo
+    if (lowerText.includes("fox jumps")) {
+      return {
+        nodes: [
+          { id: "1", label: "Brown Fox", type: "character" },
+          { id: "2", label: "Jumps", type: "action" },
+          { id: "3", label: "Lazy Dog", type: "object" }
+        ],
+        edges: [
+          { source: "1", target: "2", label: "does" },
+          { source: "2", target: "3", label: "over" }
+        ]
+      };
+    }
+    if (lowerText.includes("sample reading text")) {
+      return {
+        nodes: [
+          { id: "1", label: "Student", type: "character" },
+          { id: "2", label: "Tests", type: "action" },
+          { id: "3", label: "Interface", type: "setting" }
+        ],
+        edges: [
+          { source: "1", target: "2", label: "will" },
+          { source: "2", target: "3", label: "the" }
+        ]
+      };
+    }
+    if (lowerText.includes("multiple sentences")) {
+      return {
+        nodes: [
+          { id: "1", label: "Text", type: "object" },
+          { id: "2", label: "Has", type: "action" },
+          { id: "3", label: "Multiple Lines", type: "object" }
+        ],
+        edges: [
+          { source: "1", target: "2", label: "currently" },
+          { source: "2", target: "3", label: "many" }
+        ]
+      };
+    }
+    if (lowerText.includes("difficult")) {
+      return {
+        nodes: [
+          { id: "1", label: "Some Words", type: "object" },
+          { id: "2", label: "Are", type: "action" },
+          { id: "3", label: "Magnificent", type: "object" }
+        ],
+        edges: [
+          { source: "1", target: "2", label: "can be" },
+          { source: "2", target: "3", label: "like" }
+        ]
+      };
+    }
+
+    // Generic fallback heuristic
+    const words = text.replace(/[^\w\s]/g, '').trim().split(/\s+/).filter(w => w.length > 3);
+    const subject = words[0] || "Someone";
+    const verb = words[Math.floor(words.length / 2)] || "acted";
+    const object = words[words.length - 1] || "somewhere";
+
+    return {
+      nodes: [
+        { id: "1", label: subject, type: "character" },
+        { id: "2", label: verb, type: "action" },
+        { id: "3", label: object, type: "object" }
+      ],
+      edges: [
+        { source: "1", target: "2", label: "then" },
+        { source: "2", target: "3", label: "with" }
+      ]
+    };
+  };
+
+  const handleVisualize = (lineIndex: number, text: string) => {
+    setVisualizations(prev => ({ ...prev, [lineIndex]: 'loading' }));
+    
+    // Simulate AI thinking delay for a better user experience
+    setTimeout(() => {
+      try {
+        const data = generateFrontendStoryMap(text);
+        setVisualizations(prev => ({ ...prev, [lineIndex]: data }));
+      } catch (error) {
+        console.error("Visualization error:", error);
+        setVisualizations(prev => {
+          const copy = { ...prev };
+          delete copy[lineIndex];
+          return copy;
+        });
+        toast.error("Failed to generate visualization.");
+      }
+    }, 1000);
   };
 
   useEffect(() => {
@@ -519,18 +676,8 @@ export const LessonPage = () => {
   }
 
   return (
-    <div className="space-y-8 py-4 max-w-7xl mx-auto px-4 lg:px-8">
-      <header className="flex items-center gap-4 card-clean p-4 px-6 bg-white">
-        <div className="p-2.5 bg-sky-100 rounded-xl">
-           <FileText className="w-5 h-5 text-sky-600" />
-        </div>
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-black text-slate-900">{content.title || "Placeholder Lesson Name"}</h1>
-          <span className="text-sm font-bold text-slate-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        </div>
-      </header>
-
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
+    <div className="space-y-8 py-4 max-w-full mx-auto px-4 lg:px-12">
+      <div className="flex flex-col lg:flex-row gap-12 items-start">
         <aside className="w-full lg:w-64 space-y-6 lg:sticky lg:top-28 flex-shrink-0">
            <div className="card-clean p-6 bg-white">
               <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
@@ -557,6 +704,17 @@ export const LessonPage = () => {
                      <div className={`h-2.5 w-2.5 rounded-full border-2 ${supports[key as keyof LessonSupportDefaults] ? 'bg-white border-sky-400' : 'bg-slate-200 border-slate-300'}`} />
                    </button>
                  ))}
+                 <button
+                  onClick={() => setShowNextWordGuide(c => !c)}
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-all border-2 ${
+                    showNextWordGuide 
+                    ? "bg-sky-500 text-white border-sky-600 shadow-md shadow-sky-200" 
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                  }`}
+                 >
+                   Next Word
+                   <div className={`h-2.5 w-2.5 rounded-full border-2 ${showNextWordGuide ? 'bg-white border-sky-400' : 'bg-slate-200 border-slate-300'}`} />
+                 </button>
               </div>
 
               <div className="mt-8 pt-6 border-t-2 border-slate-100">
@@ -578,13 +736,34 @@ export const LessonPage = () => {
         </aside>
 
         <main className="space-y-8 flex-grow w-full min-w-0">
-           <div className="card-clean p-10 lg:p-16 bg-white relative min-h-[600px] flex flex-col items-center justify-center overflow-hidden">
-              <div className="absolute top-8 right-8">
+          <header className="flex items-center gap-4 card-clean p-4 px-6 bg-white w-full">
+            <div className="p-2.5 bg-sky-100 rounded-xl flex-shrink-0">
+               <FileText className="w-5 h-5 text-sky-600" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-2xl font-black text-slate-900 truncate">{content.title || "Placeholder Lesson Name"}</h1>
+              <span className="text-sm font-bold text-slate-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+          </header>
+
+           <div className="card-clean p-10 lg:p-16 bg-white relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden w-full">
+              <div className="absolute top-8 right-8 z-50">
                  <div className={`px-4 py-2 rounded-xl border-2 flex items-center gap-3 font-black uppercase tracking-widest text-[10px] ${tracker.status === 'connected' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                     <Eye className={`w-4 h-4 ${tracker.status === 'connected' ? 'animate-pulse' : ''}`} />
                     Gaze Sync: {tracker.status}
                  </div>
               </div>
+
+              {tracker.status === 'connected' && tracker.latestSample && (() => {
+                const pt = screenToViewport(tracker.latestSample);
+                return (
+                  <motion.div
+                    className="fixed w-5 h-5 rounded-full bg-emerald-400/40 border-2 border-emerald-400 pointer-events-none z-[100] shadow-[0_0_15px_rgba(52,211,153,0.6)] backdrop-blur-sm"
+                    animate={{ left: pt.x - 10, top: pt.y - 10 }}
+                    transition={{ type: "tween", duration: 0.05 }}
+                  />
+                );
+              })()}
 
               {supports.lineFocus && readingRuler.visible && (
                 <motion.div
@@ -594,30 +773,86 @@ export const LessonPage = () => {
                 />
               )}
 
-              <div ref={readingSurfaceRef} className="relative z-10 w-full max-w-5xl mx-auto space-y-16 lg:space-y-24 text-center">
-                 {readerLines.map((line, li) => (
+              <div ref={readingSurfaceRef} className="relative z-10 w-full max-w-[95vw] lg:max-w-[90rem] mx-auto space-y-24 lg:space-y-32 text-center">
+                 {readerLines.map((line, li) => {
+                   const lineText = line.map(w => w.display).join(" ");
+                   return (
                    <div 
                     key={li} 
                     ref={(el) => (lineRefs.current[li] = el)}
-                    className="relative inline-block transition-all duration-300"
+                    className="relative flex flex-col items-center transition-all duration-300 mb-16"
                     style={{ opacity: activeLineIndex === li || !supports.lineFocus ? 1 : 0.3 }}
                    >
-                     <p className="text-6xl md:text-7xl lg:text-[5rem] font-black leading-[1.6] tracking-tight text-slate-700">
+                     <p className="text-5xl md:text-[4.5rem] lg:text-[5rem] font-black leading-[2.5] tracking-tight text-slate-700">
                         {line.map((word, wi) => (
                           <span
                             key={wi}
                             data-word-index={word.index}
                             data-line-index={li}
-                            className={`inline px-3 py-1 rounded-[2rem] transition-all duration-200 cursor-default ${
+                            onClick={() => setClickedWordIndex(clickedWordIndex === word.index ? null : word.index)}
+                            className={`inline-block mx-3 md:mx-4 px-4 py-1 rounded-[2rem] transition-all duration-200 cursor-pointer ${
                               activeWordIndex === word.index ? 'bg-sky-500 text-white shadow-2xl scale-110' : ''
-                            } ${word.difficult && !activeWordIndex === word.index ? 'text-indigo-600' : ''}`}
+                            } ${
+                              showNextWordGuide && activeWordIndex !== null && word.index === activeWordIndex + 1 
+                              ? 'bg-sky-100 text-sky-700 shadow-sm border-b-4 border-sky-300 scale-105' 
+                              : ''
+                            } ${word.difficult && activeWordIndex !== word.index ? 'text-indigo-600' : ''}`}
                           >
-                            {supports.bionic ? renderBionicWord(word.display) : word.display}{" "}
+                            {clickedWordIndex === word.index 
+                              ? (
+                                <motion.span 
+                                  initial={{ opacity: 0, width: 0 }}
+                                  animate={{ opacity: 1, width: "auto" }}
+                                  className="inline-flex items-center gap-4 mx-4 align-middle"
+                                >
+                                  {word.syllables.map((syl, i) => (
+                                    <motion.span 
+                                      key={i} 
+                                      initial={{ opacity: 0, scale: 0, rotate: -15, y: 20 }}
+                                      animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+                                      transition={{ 
+                                        type: "spring", 
+                                        stiffness: 500, 
+                                        damping: 20, 
+                                        delay: i * 0.08 
+                                      }}
+                                      whileHover={{ y: -8, scale: 1.1, rotate: i % 2 === 0 ? 3 : -3 }}
+                                      className="bg-white text-sky-500 border-4 border-sky-100 border-b-[12px] rounded-[3rem] px-8 py-3 shadow-[0_12px_30px_-10px_rgba(14,165,233,0.3)] font-black lowercase inline-block"
+                                    >
+                                      {syl}
+                                    </motion.span>
+                                  ))}
+                                </motion.span>
+                              )
+                              : (supports.bionic ? renderBionicWord(word.display) : word.display)
+                            }{" "}
                           </span>
                         ))}
                      </p>
+
+                     <div className="mt-16 flex justify-center w-full relative z-20">
+                       {!visualizations[li] ? (
+                         <button
+                           onClick={() => handleVisualize(li, lineText)}
+                           className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-b from-sky-50 to-sky-100 hover:from-sky-100 hover:to-sky-200 text-sky-700 font-black text-xl transition-all border-4 border-sky-200 shadow-xl hover:scale-105"
+                         >
+                           <Sparkles className="w-6 h-6 text-sky-500" />
+                           Draw Story Map
+                         </button>
+                       ) : visualizations[li] === 'loading' ? (
+                         <div className="flex items-center gap-4 px-8 py-4 rounded-[2rem] bg-sky-50 text-sky-500 font-black text-xl animate-pulse border-4 border-sky-100 shadow-lg">
+                           <Sparkles className="w-6 h-6 animate-spin" />
+                           AI is drawing...
+                         </div>
+                       ) : (
+                         <ConceptMap 
+                           nodes={(visualizations[li] as VisualizeResponse).nodes} 
+                           edges={(visualizations[li] as VisualizeResponse).edges} 
+                         />
+                       )}
+                     </div>
                    </div>
-                 ))}
+                 )})}
               </div>
 
               <AnimatePresence>

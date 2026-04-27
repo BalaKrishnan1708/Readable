@@ -22,6 +22,8 @@ from app.schemas.session import (
     ReadingStartResponse,
     ReadingSubmitResponse,
     SessionResultPayload,
+    VisualizeRequest,
+    VisualizeResponse,
     VoiceMetricsPayload,
 )
 from app.services.content import DIAGNOSTIC_PASSAGE
@@ -168,6 +170,30 @@ async def submit_reading(
         profile=response["profile"],
         progress_entry_id=response["progress_entry_id"],
     )
+
+
+@router.post("/reading/visualize", response_model=VisualizeResponse)
+async def visualize_paragraph(
+    payload: VisualizeRequest,
+    current_user: User = Depends(require_role("student")),
+) -> VisualizeResponse:
+    result = await llm.generate_visual_concept_map(payload.text)
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to generate visualization")
+    return VisualizeResponse(**result)
+
+
+@router.post("/diagnostic/phonics/transcribe")
+async def transcribe_phonics(
+    audio_file: UploadFile = File(...),
+    current_user: User = Depends(require_role("student")),
+) -> dict[str, str]:
+    """
+    Transcribes a short audio clip for the phonics evaluation using Groq Whisper.
+    """
+    audio_bytes = await audio_file.read()
+    text = await llm.transcribe_audio(audio_bytes)
+    return {"text": text}
 
 
 async def _submit_session(
