@@ -12,6 +12,7 @@ class StudentProfile(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reading_level: Mapped[str | None] = mapped_column(nullable=True)
     avg_speed_wpm: Mapped[float] = mapped_column(Float, default=0.0)
     avg_accuracy_pct: Mapped[float] = mapped_column(Float, default=0.0)
@@ -23,4 +24,5 @@ class StudentProfile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    user = relationship("User", back_populates="student_profile")
+    user = relationship("User", foreign_keys=[user_id], back_populates="student_profile")
+    parent = relationship("User", foreign_keys=[parent_id])

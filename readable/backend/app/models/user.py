@@ -10,6 +10,7 @@ from app.core.database import Base
 class UserRole(str, Enum):
     student = "student"
     teacher = "teacher"
+    parent = "parent"
 
 
 class User(Base):
@@ -21,7 +22,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    student_profile = relationship("StudentProfile", back_populates="user", uselist=False)
+    student_profile = relationship("StudentProfile", foreign_keys="[StudentProfile.user_id]", back_populates="user", uselist=False)
     taught_lessons = relationship("Lesson", back_populates="teacher")
     sessions = relationship("Session", back_populates="student")
     personalized_content_items = relationship("PersonalizedContent", back_populates="student")

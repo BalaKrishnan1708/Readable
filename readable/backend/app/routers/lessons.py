@@ -46,6 +46,11 @@ async def upload_lesson(
             raw_content = f"Uploaded file: {file.filename}"
             processed_content = await ocr.extract(file_bytes, mime_type)
 
+    import re
+    # Strip special characters and normalize whitespace for all extracted text
+    processed_content = re.sub(r'[^\w\s.,?!;:\'"()-]', '', processed_content)
+    processed_content = re.sub(r'[ \t]+', ' ', processed_content).strip()
+
     lesson = Lesson(
         teacher_id=current_user.id,
         title=title,
@@ -72,7 +77,7 @@ async def upload_lesson(
 )
 async def personalize_lesson(
     lesson_id: int,
-    student_id: int,
+    student_id: str,
     current_user: User = Depends(require_role("teacher")),
     db: AsyncSession = Depends(get_db),
 ) -> PersonalizedContentResponse:
@@ -83,54 +88,72 @@ async def personalize_lesson(
     if lesson is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
 
-    profile_result = await db.execute(
-        select(StudentProfile).where(StudentProfile.user_id == student_id)
-    )
-    profile = profile_result.scalar_one_or_none()
-    if profile is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found")
+    if student_id.lower() == "all":
+        profiles_result = await db.execute(select(StudentProfile))
+        profiles_to_process = profiles_result.scalars().all()
+        if not profiles_to_process:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No students found")
+    else:
+        try:
+            target_id = int(student_id)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid student_id")
+        
+        profile_result = await db.execute(
+            select(StudentProfile).where(StudentProfile.user_id == target_id)
+        )
+        profile = profile_result.scalar_one_or_none()
+        if profile is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found")
+        profiles_to_process = [profile]
 
-    adapted = await personalization.adapt(
-        lesson.processed_content,
-        {
-            "reading_level": profile.reading_level,
-            "avg_speed_wpm": profile.avg_speed_wpm,
-            "avg_accuracy_pct": profile.avg_accuracy_pct,
-            "attention_score": profile.attention_score,
-            "difficult_words": profile.difficult_words,
-        },
-    )
+    first_personalized = None
 
-    personalized = PersonalizedContent(
-        lesson_id=lesson.id,
-        student_id=student_id,
-        adapted_content={
-            "segments": adapted["segments"],
-            "chunk_mode": adapted.get("chunk_mode", "paired-sentences"),
-            "phonetic_support": adapted.get("phonetic_support", {}),
-        },
-        syllable_breaks=adapted["syllable_breaks"],
-        font_size=int(adapted["font_size"]),
-        spacing=float(adapted["line_spacing"]),
-        chunk_size=int(adapted["chunk_size"]),
-    )
-    db.add(personalized)
-    await db.commit()
-    await db.refresh(personalized)
+    for profile in profiles_to_process:
+        adapted = await personalization.adapt(
+            lesson.processed_content,
+            {
+                "reading_level": profile.reading_level,
+                "avg_speed_wpm": profile.avg_speed_wpm,
+                "avg_accuracy_pct": profile.avg_accuracy_pct,
+                "attention_score": profile.attention_score,
+                "difficult_words": profile.difficult_words,
+            },
+        )
+
+        personalized = PersonalizedContent(
+            lesson_id=lesson.id,
+            student_id=profile.user_id,
+            adapted_content={
+                "segments": adapted["segments"],
+                "chunk_mode": adapted.get("chunk_mode", "paired-sentences"),
+                "phonetic_support": adapted.get("phonetic_support", {}),
+            },
+            syllable_breaks=adapted["syllable_breaks"],
+            font_size=int(adapted["font_size"]),
+            spacing=float(adapted["line_spacing"]),
+            chunk_size=int(adapted["chunk_size"]),
+        )
+        db.add(personalized)
+        await db.commit()
+        await db.refresh(personalized)
+
+        if first_personalized is None:
+            first_personalized = personalized
 
     return PersonalizedContentResponse(
-        id=personalized.id,
-        lesson_id=personalized.lesson_id,
-        student_id=personalized.student_id,
-        segments=list(personalized.adapted_content.get("segments", [])),
-        syllable_breaks=personalized.syllable_breaks,
+        id=first_personalized.id,
+        lesson_id=first_personalized.lesson_id,
+        student_id=first_personalized.student_id,
+        segments=list(first_personalized.adapted_content.get("segments", [])),
+        syllable_breaks=first_personalized.syllable_breaks,
         phonetic_support={
             key: PhoneticSupportWordResponse(**value)
-            for key, value in personalized.adapted_content.get("phonetic_support", {}).items()
+            for key, value in first_personalized.adapted_content.get("phonetic_support", {}).items()
             if isinstance(value, dict)
         },
-        font_size=personalized.font_size,
-        line_spacing=personalized.spacing,
-        chunk_size=personalized.chunk_size,
-        created_at=personalized.created_at,
+        font_size=first_personalized.font_size,
+        line_spacing=first_personalized.spacing,
+        chunk_size=first_personalized.chunk_size,
+        created_at=first_personalized.created_at,
     )

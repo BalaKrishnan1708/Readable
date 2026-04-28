@@ -232,3 +232,60 @@ async def transcribe_audio(audio_bytes: bytes) -> str:
         import traceback
         logger.error(f"Failed to transcribe audio from GROQ (Exception type: {type(e).__name__}): {e}\n{traceback.format_exc()}")
         return ""
+
+async def extract_vision_ocr(base64_image: str) -> str:
+    """
+    Use GROQ AI (llama-3.2-11b-vision-preview) to extract text from an image.
+    """
+    import os
+    from dotenv import load_dotenv
+    
+    load_dotenv(override=True)
+    api_key = os.getenv("GROQ_API_KEY") or settings.groq_api_key
+
+    if not api_key or "replace_this" in api_key:
+        logger.error("GROQ_API_KEY is missing or placeholder.")
+        return ""
+
+    try:
+        import httpx
+        GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                GROQ_API_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "llama-3.2-11b-vision-preview",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Extract all the readable text from this image accurately. Return ONLY the text, nothing else. If there is no text or it is unreadable, return an empty string. Do not include introductory text."},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                                }
+                            ]
+                        }
+                    ],
+                    "temperature": 0.1,
+                },
+                timeout=60.0
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"GROQ Vision API error: {response.text}")
+                return ""
+            
+            result = response.json()
+            return result["choices"][0]["message"]["content"].strip()
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Failed to extract text from GROQ Vision (Exception type: {type(e).__name__}): {e}\n{traceback.format_exc()}")
+        return ""
+

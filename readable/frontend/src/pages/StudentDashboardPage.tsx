@@ -42,7 +42,7 @@ export const StudentDashboardPage = () => {
           <h1 className="text-5xl font-black text-slate-900 leading-tight">
             Hi, {user?.name?.split(' ')[0] || 'Explorer'}! 👋
           </h1>
-          <p className="mt-2 text-xl font-bold text-slate-500">Ready for today's reading mission?</p>
+          <p className="mt-2 text-xl font-bold text-slate-500">Ready for today's reading lesson?</p>
         </div>
         <Link
           to="/diagnostic"
@@ -145,7 +145,7 @@ export const StudentDashboardPage = () => {
             Reading Library
           </h2>
           <span className="font-black text-slate-400 uppercase tracking-widest text-sm">
-            {lessons.length + 1} Missions Available
+            {lessons.length + 2} Lessons Available
           </span>
         </div>
 
@@ -162,7 +162,7 @@ export const StudentDashboardPage = () => {
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between mb-6">
                   <span className="px-4 py-1.5 rounded-full bg-indigo-500 border-b-4 border-indigo-600 text-[10px] font-black uppercase tracking-widest text-white">
-                    Special Mission
+                    Special Lesson
                   </span>
                   <Globe className="w-5 h-5 text-indigo-500 animate-spin-slow" />
                 </div>
@@ -198,7 +198,7 @@ export const StudentDashboardPage = () => {
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between mb-6">
                   <span className="px-4 py-1.5 rounded-full bg-sky-500 border-b-4 border-sky-600 text-[10px] font-black uppercase tracking-widest text-white">
-                    Demo Mission
+                    Demo Lesson
                   </span>
                   <Sparkles className="w-5 h-5 text-sky-500" />
                 </div>
@@ -219,9 +219,7 @@ export const StudentDashboardPage = () => {
                 </div>
               </div>
             </Link>
-          </motion.div>
-
-          {lessons.map((lesson, i) => (
+          </motion.div>          {lessons.map((lesson, i) => (
             <motion.div
               key={lesson.personalized_content_id}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -235,7 +233,7 @@ export const StudentDashboardPage = () => {
                 <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between mb-6">
                     <span className="px-4 py-1.5 rounded-full bg-slate-100 border-2 border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      Mission {i + 1}
+                      Lesson {i + 1}
                     </span>
                     <Sparkles className="w-5 h-5 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>

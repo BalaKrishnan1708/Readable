@@ -16,9 +16,13 @@ import { LessonPage } from "./pages/LessonPage";
 import { UploadPage } from "./pages/UploadPage";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { ReaderPage } from "./pages/ReaderPage";
+import { ImageGalleryPage } from "./pages/ImageGalleryPage";
+
+import { authStore } from "./stores/authStore";
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const role = authStore((state) => state.role);
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/";
   const isFullscreen = location.pathname === "/reader";
 
@@ -82,6 +86,7 @@ function App() {
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/students/:id" element={<StudentDetailPage />} />
           <Route path="/reader" element={<ReaderPage />} />
+          <Route path="/gallery" element={<ImageGalleryPage />} />
         </Routes>
       </AppShell>
       <Toaster 

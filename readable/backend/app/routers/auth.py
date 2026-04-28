@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    if payload.role not in {UserRole.student.value, UserRole.teacher.value}:
+    if payload.role not in {UserRole.student.value, UserRole.teacher.value, UserRole.parent.value}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role")
 
     existing = await db.execute(select(User).where(User.email == payload.email))

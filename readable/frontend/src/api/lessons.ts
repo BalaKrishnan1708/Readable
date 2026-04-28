@@ -20,7 +20,7 @@ export const uploadLesson = async (payload: {
 
 export const personalizeLesson = async (
   lessonId: number,
-  studentId: number,
+  studentId: string | number,
 ): Promise<PersonalizedContent> => {
   const { data } = await apiClient.post<PersonalizedContent>(
     `/lessons/${lessonId}/personalize/${studentId}`,
