@@ -1,7 +1,7 @@
 import asyncio
 import functools
-import tempfile
 import logging
+import tempfile
 from pathlib import Path
 
 import whisper
@@ -32,8 +32,32 @@ async def transcribe(audio_bytes: bytes) -> str:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         _model = whisper.load_model("base", device=device)
 
-    # Whisper requires a file path or a numpy array. 
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+    return await transcribe_with_metadata(audio_bytes)
+
+
+async def transcribe_with_metadata(
+    audio_bytes: bytes,
+    filename: str | None = None,
+    content_type: str | None = None,
+) -> str:
+    """
+    Transcribe audio bytes using the local Whisper model while preserving the
+    original container extension when available.
+    """
+    global _model
+
+    if not audio_bytes or len(audio_bytes) < 100:
+        logger.warning("STT: Received empty or too short audio bytes. Skipping transcription.")
+        return ""
+
+    if _model is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _model = whisper.load_model("base", device=device)
+
+    suffix = _resolve_audio_suffix(filename, content_type)
+
+    # Whisper requires a file path or a numpy array.
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(audio_bytes)
         tmp_path = tmp.name
 
@@ -59,3 +83,26 @@ async def transcribe(audio_bytes: bytes) -> str:
         # Cleanup temporary file
         if Path(tmp_path).exists():
             Path(tmp_path).unlink()
+
+
+def _resolve_audio_suffix(filename: str | None, content_type: str | None) -> str:
+    if filename:
+        suffix = Path(filename).suffix.strip()
+        if suffix:
+            return suffix
+
+    if content_type:
+        mapping = {
+            "audio/webm": ".webm",
+            "audio/webm;codecs=opus": ".webm",
+            "audio/wav": ".wav",
+            "audio/x-wav": ".wav",
+            "audio/mpeg": ".mp3",
+            "audio/mp3": ".mp3",
+            "audio/ogg": ".ogg",
+            "audio/ogg;codecs=opus": ".ogg",
+        }
+        if content_type in mapping:
+            return mapping[content_type]
+
+    return ".wav"

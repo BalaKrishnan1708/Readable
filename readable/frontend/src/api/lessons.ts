@@ -1,4 +1,8 @@
-import type { LessonUploadResponse, PersonalizedContent } from "../types/lesson";
+import type {
+  LessonUploadResponse,
+  PersonalizedContent,
+  TeacherPersonalizedLesson,
+} from "../types/lesson";
 import { apiClient } from "./client";
 
 export const uploadLesson = async (payload: {
@@ -24,6 +28,15 @@ export const personalizeLesson = async (
 ): Promise<PersonalizedContent> => {
   const { data } = await apiClient.post<PersonalizedContent>(
     `/lessons/${lessonId}/personalize/${studentId}`,
+  );
+  return data;
+};
+
+export const personalizeLessonForAll = async (
+  lessonId: number,
+): Promise<TeacherPersonalizedLesson[]> => {
+  const { data } = await apiClient.post<TeacherPersonalizedLesson[]>(
+    `/lessons/${lessonId}/personalize-all`,
   );
   return data;
 };

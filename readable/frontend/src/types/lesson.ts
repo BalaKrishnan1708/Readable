@@ -27,6 +27,14 @@ export interface PersonalizedContent {
   created_at: string;
 }
 
+export interface TeacherPersonalizedLesson {
+  student_id: number;
+  student_name: string;
+  student_email: string;
+  reading_level: string | null;
+  personalized_content: PersonalizedContent;
+}
+
 export interface StudentLessonCard {
   personalized_content_id: number;
   lesson_id: number;

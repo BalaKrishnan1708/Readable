@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Readable API"
     database_url: str = Field(
-        default="postgresql+asyncpg://readable:readable@postgres:5432/readable"
+        default="postgresql+asyncpg://readable:readable@localhost:5432/readable"
     )
     redis_url: str = "redis://redis:6379/0"
     jwt_secret: str = "change-me"

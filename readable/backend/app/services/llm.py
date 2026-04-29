@@ -183,7 +183,11 @@ async def generate_visual_concept_map(text: str) -> dict[str, Any] | None:
         logger.error(f"Failed to generate visualization from GROQ (Exception type: {type(e).__name__}): {e}\n{traceback.format_exc()}")
         return None
 
-async def transcribe_audio(audio_bytes: bytes) -> str:
+async def transcribe_audio(
+    audio_bytes: bytes,
+    filename: str = "audio.webm",
+    content_type: str | None = None,
+) -> str:
     """
     Use GROQ AI (whisper-large-v3) to quickly transcribe short audio.
     """
@@ -193,20 +197,25 @@ async def transcribe_audio(audio_bytes: bytes) -> str:
     load_dotenv(override=True)
     api_key = os.getenv("GROQ_API_KEY") or settings.groq_api_key
 
-    if not api_key or "replace_this" in api_key:
-        logger.error("GROQ_API_KEY is missing or placeholder.")
-        return ""
-
     if not audio_bytes:
         return ""
+
+    if not api_key or "replace_this" in api_key:
+        logger.warning("GROQ_API_KEY is missing; falling back to local Whisper transcription.")
+        from app.services import stt
+
+        return await stt.transcribe_with_metadata(
+            audio_bytes,
+            filename=filename,
+            content_type=content_type,
+        )
 
     try:
         import httpx
         GROQ_AUDIO_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
         
-        files = {
-            "file": ("audio.wav", audio_bytes, "audio/wav")
-        }
+        resolved_content_type = content_type or "audio/webm"
+        files = {"file": (filename, audio_bytes, resolved_content_type)}
         data = {
             "model": "whisper-large-v3",
             "language": "en"
@@ -223,7 +232,13 @@ async def transcribe_audio(audio_bytes: bytes) -> str:
             
             if response.status_code != 200:
                 logger.error(f"GROQ Whisper API error: {response.text}")
-                return ""
+                from app.services import stt
+
+                return await stt.transcribe_with_metadata(
+                    audio_bytes,
+                    filename=filename,
+                    content_type=content_type,
+                )
             
             result = response.json()
             return result.get("text", "").strip()
@@ -231,7 +246,13 @@ async def transcribe_audio(audio_bytes: bytes) -> str:
     except Exception as e:
         import traceback
         logger.error(f"Failed to transcribe audio from GROQ (Exception type: {type(e).__name__}): {e}\n{traceback.format_exc()}")
-        return ""
+        from app.services import stt
+
+        return await stt.transcribe_with_metadata(
+            audio_bytes,
+            filename=filename,
+            content_type=content_type,
+        )
 
 async def extract_vision_ocr(base64_image: str) -> str:
     """

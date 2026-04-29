@@ -83,9 +83,21 @@ export const visualizeParagraph = async (text: string): Promise<VisualizeRespons
   return data;
 };
 
-export const transcribePhonics = async (audioFile: Blob): Promise<{ text: string }> => {
+export const transcribePhonics = async (audioFile: Blob, expectedWord?: string): Promise<{ text: string, is_match?: boolean, clean_text?: string }> => {
   const formData = new FormData();
-  formData.append("audio_file", audioFile, "phonics.wav");
-  const { data } = await apiClient.post<{ text: string }>("/sessions/diagnostic/phonics/transcribe", formData);
+  const extension = audioFile.type.includes("webm")
+    ? "webm"
+    : audioFile.type.includes("ogg")
+      ? "ogg"
+      : audioFile.type.includes("mpeg")
+        ? "mp3"
+        : audioFile.type.includes("wav")
+          ? "wav"
+          : "webm";
+  formData.append("audio_file", audioFile, `phonics.${extension}`);
+  if (expectedWord) {
+    formData.append("expected_word", expectedWord);
+  }
+  const { data } = await apiClient.post<{ text: string, is_match?: boolean, clean_text?: string }>("/sessions/diagnostic/phonics/transcribe", formData);
   return data;
 };

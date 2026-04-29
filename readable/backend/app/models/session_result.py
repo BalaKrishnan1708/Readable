@@ -1,5 +1,4 @@
-from sqlalchemy import Float, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Float, ForeignKey, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -14,12 +13,12 @@ class SessionResult(Base):
     )
     spoken_text: Mapped[str] = mapped_column(Text)
     expected_text: Mapped[str] = mapped_column(Text)
-    errors: Mapped[list[dict[str, object]]] = mapped_column(JSONB, default=list)
+    errors: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
     speed_wpm: Mapped[float] = mapped_column(Float)
-    hesitation_points: Mapped[list[int]] = mapped_column(JSONB, default=list)
-    eye_tracking_data: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    hesitation_points: Mapped[list[int]] = mapped_column(JSON, default=list)
+    eye_tracking_data: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     accuracy_pct: Mapped[float] = mapped_column(Float)
-    model_profile_scores: Mapped[dict[str, float]] = mapped_column(JSONB, default=dict)
+    model_profile_scores: Mapped[dict[str, float]] = mapped_column(JSON, default=dict)
     review_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     session = relationship("Session", back_populates="result")

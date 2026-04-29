@@ -10,6 +10,7 @@ from app.schemas.lesson import (
     LessonUploadResponse,
     PersonalizedContentResponse,
     PhoneticSupportWordResponse,
+    TeacherPersonalizedLessonResponse,
 )
 from app.stubs import ocr, personalization
 
@@ -142,18 +143,97 @@ async def personalize_lesson(
             first_personalized = personalized
 
     return PersonalizedContentResponse(
-        id=first_personalized.id,
-        lesson_id=first_personalized.lesson_id,
-        student_id=first_personalized.student_id,
-        segments=list(first_personalized.adapted_content.get("segments", [])),
-        syllable_breaks=first_personalized.syllable_breaks,
-        phonetic_support={
+        **_personalized_content_payload(first_personalized)
+    )
+
+
+@router.post(
+    "/{lesson_id}/personalize-all",
+    response_model=list[TeacherPersonalizedLessonResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def personalize_lesson_for_all_students(
+    lesson_id: int,
+    current_user: User = Depends(require_role("teacher")),
+    db: AsyncSession = Depends(get_db),
+) -> list[TeacherPersonalizedLessonResponse]:
+    lesson_result = await db.execute(
+        select(Lesson).where(Lesson.id == lesson_id, Lesson.teacher_id == current_user.id)
+    )
+    lesson = lesson_result.scalar_one_or_none()
+    if lesson is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+
+    profiles_result = await db.execute(select(StudentProfile))
+    profiles = profiles_result.scalars().all()
+    if not profiles:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No students found")
+
+    responses: list[TeacherPersonalizedLessonResponse] = []
+
+    for profile in profiles:
+        student_result = await db.execute(select(User).where(User.id == profile.user_id))
+        student = student_result.scalar_one_or_none()
+        if student is None:
+            continue
+
+        adapted = await personalization.adapt(
+            lesson.processed_content,
+            {
+                "reading_level": profile.reading_level,
+                "avg_speed_wpm": profile.avg_speed_wpm,
+                "avg_accuracy_pct": profile.avg_accuracy_pct,
+                "attention_score": profile.attention_score,
+                "difficult_words": profile.difficult_words,
+            },
+        )
+
+        personalized = PersonalizedContent(
+            lesson_id=lesson.id,
+            student_id=profile.user_id,
+            adapted_content={
+                "segments": adapted["segments"],
+                "chunk_mode": adapted.get("chunk_mode", "paired-sentences"),
+                "phonetic_support": adapted.get("phonetic_support", {}),
+            },
+            syllable_breaks=adapted["syllable_breaks"],
+            font_size=int(adapted["font_size"]),
+            spacing=float(adapted["line_spacing"]),
+            chunk_size=int(adapted["chunk_size"]),
+        )
+        db.add(personalized)
+        await db.commit()
+        await db.refresh(personalized)
+
+        responses.append(
+            TeacherPersonalizedLessonResponse(
+                student_id=student.id,
+                student_name=student.email.split("@")[0].replace(".", " ").title(),
+                student_email=student.email,
+                reading_level=profile.reading_level,
+                personalized_content=PersonalizedContentResponse(
+                    **_personalized_content_payload(personalized)
+                ),
+            )
+        )
+
+    return responses
+
+
+def _personalized_content_payload(personalized: PersonalizedContent) -> dict[str, object]:
+    return {
+        "id": personalized.id,
+        "lesson_id": personalized.lesson_id,
+        "student_id": personalized.student_id,
+        "segments": list(personalized.adapted_content.get("segments", [])),
+        "syllable_breaks": personalized.syllable_breaks,
+        "phonetic_support": {
             key: PhoneticSupportWordResponse(**value)
-            for key, value in first_personalized.adapted_content.get("phonetic_support", {}).items()
+            for key, value in personalized.adapted_content.get("phonetic_support", {}).items()
             if isinstance(value, dict)
         },
-        font_size=first_personalized.font_size,
-        line_spacing=first_personalized.spacing,
-        chunk_size=first_personalized.chunk_size,
-        created_at=first_personalized.created_at,
-    )
+        "font_size": personalized.font_size,
+        "line_spacing": personalized.spacing,
+        "chunk_size": personalized.chunk_size,
+        "created_at": personalized.created_at,
+    }

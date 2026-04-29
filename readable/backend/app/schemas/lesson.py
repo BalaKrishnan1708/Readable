@@ -34,6 +34,14 @@ class PersonalizedContentResponse(BaseModel):
     created_at: datetime
 
 
+class TeacherPersonalizedLessonResponse(BaseModel):
+    student_id: int
+    student_name: str
+    student_email: str
+    reading_level: str | None
+    personalized_content: PersonalizedContentResponse
+
+
 class StudentLessonCardResponse(BaseModel):
     personalized_content_id: int
     lesson_id: int

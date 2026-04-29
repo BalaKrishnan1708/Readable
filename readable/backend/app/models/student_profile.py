@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -17,8 +16,8 @@ class StudentProfile(Base):
     avg_speed_wpm: Mapped[float] = mapped_column(Float, default=0.0)
     avg_accuracy_pct: Mapped[float] = mapped_column(Float, default=0.0)
     attention_score: Mapped[float] = mapped_column(Float, default=0.0)
-    difficult_words: Mapped[list[str]] = mapped_column(JSONB, default=list)
-    model_profile_scores: Mapped[dict[str, float]] = mapped_column(JSONB, default=dict)
+    difficult_words: Mapped[list[str]] = mapped_column(JSON, default=list)
+    model_profile_scores: Mapped[dict[str, float]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -1,0 +1,416 @@
+Build a frontend-only web app called "Readable" for a dyslexia-friendly reading platform for students, teachers, and parents.
+
+The goal:
+Create a polished, playful, modern educational app UI that helps children improve reading, lets teachers upload and personalize lessons, and lets parents monitor progress. This should be a complete frontend experience with realistic mock data, strong layouts, and rich screens. Do not build backend logic. Mock all data and interactions in the frontend.
+
+Tech and style direction:
+- Use React with clean component structure.
+- Use a modern design system with bold typography, rounded corners, soft shadows, playful but not childish visuals, and strong visual hierarchy.
+- Use a bright education-focused palette with sky blue, indigo, emerald, amber, slate, and white.
+- Use subtle animations and transitions.
+- Use lucide-react style icons.
+- Build responsive layouts for desktop first, but keep tablet/mobile usable.
+- This is not a marketing site. The first screen after auth should be the real product.
+
+Core product concept:
+Readable is an assistive reading platform for:
+1. Students
+2. Teachers
+3. Parents
+
+The app helps students with reading practice, diagnostic assessments, phonics support, personalized lessons, progress tracking, and reading tools like bionic text, pacing, syllable splitting, line focus, and read-aloud.
+
+Important:
+- Frontend only.
+- Use mocked API responses and local state.
+- Simulate OCR extraction, Groq-based personalization, session analytics, and lesson generation with mock loading states and believable fake outputs.
+- Make the app feel complete and premium, even if the data is mocked.
+
+Brand and tone:
+- Brand name: Readable
+- Secondary label: Explorer Hub
+- Theme language:
+  - Students are "Explorers"
+  - Lessons are "Quests"
+  - Teacher dashboard is "Mission Control"
+  - Parent area is "Parent Portal"
+- The tone should be encouraging, intelligent, warm, and empowering.
+
+App routes and screens:
+
+1. Login page
+- Large split layout.
+- Left side: strong hero with the Readable logo, headline like "Ready to Read?", and supportive copy.
+- Right side: login card with email, password, primary sign-in button, and link to register.
+- Pre-fill demo credentials visually.
+- Use a clean, high-contrast, modern educational style.
+
+2. Register page
+- Card-based signup form.
+- Fields: email, password.
+- Role selector:
+  - Student
+  - Teacher
+- Friendly heading like "Join the Mission".
+- CTA button for account creation.
+
+3. Global authenticated app shell
+- Sticky top navbar.
+- Brand block on the left.
+- Role-based nav links in the center/right.
+- User badge and logout icon/button on the right.
+- Different nav sets by role:
+  - Student: Home, Stats, Quest, Gallery
+  - Teacher: Dashboard, Lessons, Gallery
+  - Parent: minimal shell, no large nav needed
+
+4. Student dashboard
+- Welcome header using the student first name.
+- Big primary CTA to start diagnostic quest.
+- Show reading streak card.
+- Show daily goal progress card.
+- Show student level and summary stats card.
+- Show reading library section.
+- Include:
+  - Special static lesson card: Solar System Journey
+  - Demo lesson card
+  - Dynamically mocked personalized lesson cards
+- Show recent quests/history cards with:
+  - date
+  - session type
+  - accuracy
+  - speed
+- Design direction:
+  - bento layout
+  - bright cards
+  - bold metric blocks
+  - playful but organized
+
+5. Teacher dashboard
+- Title: Mission Control
+- Main roster table of students with:
+  - name
+  - email
+  - average accuracy
+  - last mission date
+  - reading level
+- Each row should feel clickable and lead to student detail.
+- Add an important teacher workflow panel above or beside the table:
+  - PDF Lesson Dispatch
+  - Input: lesson title
+  - Input: PDF upload
+  - Upload should simulate OCR extraction
+  - Show extracted OCR text preview in a white card with bold black text
+  - After upload, simulate Groq personalization for all students
+  - Render a result card for each student showing:
+    - student name
+    - student email
+    - reading level
+    - personalized lesson preview
+    - button to open student lesson
+- This page should feel like a real productivity dashboard, not just a form page.
+
+6. Lesson Workshop / Upload page
+- Separate teacher lesson page for manual uploading and personalization.
+- Inputs:
+  - lesson title
+  - raw pasted lesson text
+  - file upload for txt/pdf/image
+  - student target input or all-students option
+- If an image or PDF is uploaded, simulate OCR processing.
+- Show live extracted content in the text area.
+- Show a personalization panel with:
+  - lesson id
+  - target student
+  - generate adaptations button
+  - success card with preview link
+- Make this feel like an AI lesson authoring lab.
+
+7. Student detail page for teachers and parents
+- Header with student avatar or initial, name/email, status, explorer id.
+- Metric cards:
+  - accuracy
+  - level
+  - pace
+  - focus
+- Reading progress chart section.
+- Difficult words section with chip tags.
+- Session logs list with recent sessions.
+- This page should communicate academic performance clearly.
+
+8. Parent dashboard
+- Simple but polished overview for a parent with 2 child cards.
+- Each child card includes:
+  - reading level
+  - reading speed
+  - accuracy
+  - focus score
+  - recent session count
+  - button to view detailed progress
+- Use a trust-building, calm design.
+
+9. Progress page
+- Student-facing analytics screen.
+- Show four top metric cards:
+  - total sessions
+  - mastered words
+  - average accuracy
+  - reading level
+- Include growth graph / progress chart for accuracy history.
+- Include a focus and consistency section with:
+  - streak
+  - attention score
+  - total reading time
+- Use a motivational data dashboard style.
+
+10. Diagnostic page
+- This is one of the most important screens.
+- Flow:
+  - Landing state with big "Launch Quest" button
+  - Active reading assessment state
+  - Phonics test state
+  - Reporting state
+
+Diagnostic landing:
+- Explain that the system will track eyes and voice while reading a passage.
+- Show recent diagnostic history cards.
+
+Active reading assessment:
+- Fullscreen reading interface.
+- Left vertical control bar with start/stop recording.
+- Center large passage card.
+- Simulate eye tracking:
+  - active word highlighting
+  - gaze pointer indicator
+  - sensor status badge
+  - telemetry bars
+- Display start and stop recording states.
+
+Phonics assessment:
+- Fullscreen bright blue background.
+- Large word card in center.
+- Countdown 3, 2, 1.
+- Show a word like Bright, Sparkle, Center.
+- Simulate voice recording and checking.
+- If student "fails", reveal syllable chips like br / igh / t.
+- Show live transcript area.
+- Include progress indicators for the three phonics words.
+
+Diagnostic report:
+- After assessment, show a summary report screen.
+- Include result cards, profile summary, and a polished final diagnostic overview.
+
+11. Reading lesson page
+- This is the main student lesson experience.
+- Show lesson title and date in a top card.
+- Layout:
+  - left tool sidebar
+  - main reading surface
+  - bottom action area
+- Reading support tools:
+  - phonics toggle
+  - audio toggle
+  - line focus toggle
+  - pacer toggle
+  - bionic reading toggle
+  - next-word guide toggle
+  - speech speed slider
+- Main reading experience:
+  - personalized segmented text
+  - word highlighting
+  - difficult words visually distinguished
+  - clicking a word expands syllables
+  - optional bionic rendering
+  - line focus opacity changes
+  - reading ruler
+  - phonetic assist overlay with IPA/syllables
+- Per-line comprehension helper:
+  - each line or passage chunk can generate a "Story Map"
+  - show a concept map visualization under the chunk
+- Bottom area:
+  - start/stop pacer button
+  - record button
+  - score/result card after completion
+- This page should feel assistive, immersive, and high value.
+
+12. Reader page
+- Separate fullscreen reading reader for pasted text or article content.
+- Purpose:
+  - simplified external reading surface
+  - can accept pushed or pasted text
+- States:
+  - loading
+  - waiting for content
+  - reading mode
+  - error mode
+- Features:
+  - pagination
+  - font size controls
+  - line height controls
+  - theme switch: light, cream, dark
+  - read aloud toggle
+  - focus mode
+  - bionic reading
+  - syllable splitting
+  - pointer/guide overlay
+  - reading timer
+  - progress bar
+  - page dots
+  - copy text
+- This should feel like a premium distraction-free reader.
+
+13. Planet lesson page
+- An immersive educational showcase lesson about the solar system.
+- Fullscreen dark space-themed page.
+- Rich hero with stars, gradients, and motion.
+- Sections for Sun, Mercury, Venus, Earth, Moon, Mars, Jupiter, Saturn, Uranus, Neptune.
+- Each section includes:
+  - large planet image
+  - title
+  - descriptive text
+  - mini concept map
+- End with "Mission Complete" footer and return button.
+- This page should feel more cinematic than the rest of the app.
+
+14. Image gallery page
+- Simple gallery page with a clean masonry or grid feel.
+- Uses images from public folder.
+- Missing image states should still look intentional.
+
+User roles and behavior:
+
+Student:
+- Sees student dashboard, progress page, diagnostic page, lesson pages, gallery.
+- Goal is reading practice, diagnostics, and improvement.
+
+Teacher:
+- Sees mission control dashboard, lesson upload/authoring tools, OCR preview, Groq personalization output, student detail views, gallery.
+- Goal is creating and assigning personalized lessons.
+
+Parent:
+- Sees child overview and progress summaries.
+- Goal is monitoring improvement.
+
+Data to mock:
+
+Student profile:
+- student_id
+- name
+- email
+- reading_level
+- avg_speed_wpm
+- avg_accuracy_pct
+- attention_score
+- difficult_words
+- model_profile_scores
+- recent_sessions
+
+Lesson card:
+- lesson_id
+- personalized_content_id
+- title
+- preview_text
+- support_focus
+- segment_count
+- created_at
+
+Session summary:
+- session_id
+- session_type
+- status
+- started_at
+- ended_at
+- accuracy_pct
+- speed_wpm
+
+Teacher personalization output:
+- student_id
+- student_name
+- student_email
+- reading_level
+- personalized_content:
+  - id
+  - lesson_id
+  - student_id
+  - segments
+  - syllable_breaks
+  - phonetic_support
+  - font_size
+  - line_spacing
+  - chunk_size
+  - created_at
+
+Mock important AI behaviors:
+
+1. OCR extraction
+- Simulate extracting text from a PDF, image, or scanned worksheet.
+- Show loading state.
+- Show extracted text preview.
+
+2. Groq lesson personalization
+- After upload, simulate an AI adaptation step.
+- Create one personalized output per student.
+- Each student version should visibly differ a little:
+  - simpler wording for one student
+  - shorter chunks for another
+  - more phonetic help for another
+
+3. Story map generation
+- For selected text chunks, simulate a concept map with nodes and edges.
+
+4. Diagnostic analysis
+- Simulate reading speed, attention, fixation, and fluency results.
+
+Component ideas:
+- Navbar
+- Role-aware dashboard shell
+- Metric cards
+- Student table
+- OCR upload panel
+- OCR preview card
+- Personalized output list
+- Lesson cards
+- Progress chart
+- Session log cards
+- Reading tool sidebar
+- Reader control bar
+- Concept map widget
+- Diagnostic report panel
+- Streak card
+- Story map card
+
+Design rules:
+- Use strong typography with high contrast.
+- Keep cards rounded but structured.
+- Use no generic landing-page look.
+- Avoid plain CRUD styling.
+- Make interfaces feel like a premium learning product.
+- Use lots of hierarchy, spacing, and readable metric presentation.
+- Make teacher screens more operational and structured.
+- Make student screens more playful and motivational.
+- Make parent screens calmer and reassuring.
+
+Frontend behavior expectations:
+- Every button should have hover and active states.
+- Every screen should have loading and empty states where relevant.
+- Use animated transitions between cards or route areas.
+- Use fake progress and mock API delays for realism.
+- Keep the app stateful enough to demo flows well even without backend.
+
+What I want generated:
+- A complete frontend for this app.
+- Multiple pages and routing.
+- Beautiful mocked data.
+- Clean reusable components.
+- Enough realism that it feels like a near-finished product demo.
+
+If you need defaults, use:
+- React
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+- Recharts for charts
+- lucide-react icons
+
+Output target:
+A strong frontend-only prototype of the full Readable platform, with all major pages, role-based experiences, reading tools, teacher OCR workflow, Groq-powered personalization views, and diagnostic/lesson interfaces.

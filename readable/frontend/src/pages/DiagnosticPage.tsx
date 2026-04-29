@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Rocket, 
-  PlayCircle, 
-  Square, 
-  Award, 
-  Sparkles, 
+import {
+  Rocket,
+  PlayCircle,
+  Square,
+  Award,
+  Sparkles,
   Mic,
   Activity
 } from "lucide-react";
 
-import { startDiagnostic, submitDiagnostic } from "../api/sessions";
+import { startDiagnostic, submitDiagnostic, transcribePhonics } from "../api/sessions";
 import { useEyeTracker } from "../hooks/useEyeTracker";
 import { useStudentProfileQuery } from "../hooks/useProfileQueries";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -24,9 +24,9 @@ const PHONICS_WORDS = ["Bright", "Sparkle", "Center"];
 
 // Phonetic syllable breakdown for each word (shown after first failed attempt)
 const PHONICS_BREAKDOWN: Record<string, string[]> = {
-  Bright:  ["br", "igh", "t"],
+  Bright: ["br", "igh", "t"],
   Sparkle: ["sp", "ar", "k", "le"],
-  Center:  ["cen", "ter"],
+  Center: ["cen", "ter"],
 };
 
 export const DiagnosticPage = () => {
@@ -95,7 +95,7 @@ export const DiagnosticPage = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/wav" });
         setAudioBlob(blob);
         stream.getTracks().forEach(track => track.stop());
-        
+
         // Transition to phonics ONLY after audio is ready
         setPhase("phonics");
       };
@@ -156,17 +156,17 @@ export const DiagnosticPage = () => {
   // Step 1: request mic once when phonics phase starts
   useEffect(() => {
     if (phase !== "phonics") return;
-    
+
     // Reset all phonics-related states
     setPhonicsStep(0);
     phonicsStepRef.current = 0;
     setFailedAttempts(0);
     setCountdown(null);
     setLiveTranscript("");
-    
+
     console.log("[Phonics] Phase started, requesting mic in 500ms...");
     setPhonicsState("mic-request");
-    
+
     const timer = setTimeout(() => {
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
@@ -182,7 +182,7 @@ export const DiagnosticPage = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   // Step 2: main word flow — only re-runs when phonicsRound changes
@@ -243,17 +243,15 @@ export const DiagnosticPage = () => {
         setLiveTranscript("");
         try {
           const blob = new Blob(chunks, { type: mimeType });
-          const { transcribePhonics } = await import("../api/sessions");
-          const result = await transcribePhonics(blob);
+          const result = await transcribePhonics(blob, PHONICS_WORDS[currentStep]);
           if (cancelled) return;
 
-          const transcript = (result.text || "").toLowerCase();
-          setLiveTranscript(transcript);
-          const clean = transcript.replace(/[^a-z\s]/g, "").trim();
-          const words = clean.split(/\s+/);
+          const transcript = (result.text || "").trim();
+          const clean = (result.clean_text || "").trim();
+          setLiveTranscript(transcript.toLowerCase());
           console.log(`[Phonics] attempt=${attemptCount + 1} target="${target}" heard="${clean}"`);
 
-          if (words.includes(target) || clean.includes(target)) {
+          if (result.is_match) {
             // ✅ Match — advance to next word
             cancelled = true;
             setFailedAttempts(0);
@@ -272,23 +270,12 @@ export const DiagnosticPage = () => {
           attemptCount += 1;
           setFailedAttempts(attemptCount);
 
-          if (attemptCount >= 3) {
-            // 3rd failure — speak word aloud, then auto-advance
+          if (attemptCount % 3 === 0) {
+            // Replay the target word after repeated misses, but keep the learner on the same word.
             setPhonicsState("speak");
             speakPhonics(PHONICS_WORDS[currentStep]);
             await sleep(1600);
             if (cancelled) return;
-            cancelled = true;
-            setFailedAttempts(0);
-            const nextStep = currentStep + 1;
-            if (nextStep < PHONICS_WORDS.length) {
-              phonicsStepRef.current = nextStep;
-              setPhonicsStep(nextStep);
-              setPhonicsRound(r => r + 1);
-            } else {
-              completePhonics();
-            }
-            return;
           }
 
 
@@ -302,7 +289,7 @@ export const DiagnosticPage = () => {
     run();
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phonicsRound, phase]);
 
   // keep ref in sync with state
@@ -363,11 +350,11 @@ export const DiagnosticPage = () => {
                 </div>
               </div>
               <div className="flex justify-center">
-                <motion.img 
+                <motion.img
                   animate={{ y: [0, -20, 0] }}
                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                  src="/diagnostic-mascot.png" 
-                  alt="Mascot" 
+                  src="/diagnostic-mascot.png"
+                  alt="Mascot"
                   className="w-full max-w-[400px] drop-shadow-2xl"
                 />
               </div>
@@ -421,7 +408,7 @@ export const DiagnosticPage = () => {
             <div className="h-14 w-14 rounded-2xl bg-sky-500 border-b-4 border-sky-600 flex items-center justify-center text-white mb-4">
               <Rocket className="w-8 h-8" />
             </div>
-            
+
             <div className="flex-1 flex flex-col gap-6">
               {!isRecording ? (
                 <button
@@ -443,10 +430,10 @@ export const DiagnosticPage = () => {
             </div>
 
             <div className="mt-auto flex flex-col items-center gap-3 pb-4">
-               <div className="h-10 w-10 rounded-full border-4 border-slate-200 flex items-center justify-center">
-                  <div className={`h-3 w-3 rounded-full ${isRecording ? 'bg-emerald-500 animate-ping' : 'bg-slate-300'}`} />
-               </div>
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Live</span>
+              <div className="h-10 w-10 rounded-full border-4 border-slate-200 flex items-center justify-center">
+                <div className={`h-3 w-3 rounded-full ${isRecording ? 'bg-emerald-500 animate-ping' : 'bg-slate-300'}`} />
+              </div>
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Live</span>
             </div>
           </div>
 
@@ -454,9 +441,9 @@ export const DiagnosticPage = () => {
             {/* Gaze Pointer (GazePointer Visualizer) */}
             {phase === "active" && tracker.latestGaze && (
               <motion.div
-                animate={{ 
-                  x: tracker.latestGaze.x - 24, 
-                  y: tracker.latestGaze.y - 24 
+                animate={{
+                  x: tracker.latestGaze.x - 24,
+                  y: tracker.latestGaze.y - 24
                 }}
                 transition={{ type: "spring", damping: 30, stiffness: 200, mass: 0.5 }}
                 className="fixed top-0 left-0 w-12 h-12 rounded-full border-2 border-sky-400 bg-sky-400/20 pointer-events-none z-[60] flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.5)]"
@@ -468,69 +455,66 @@ export const DiagnosticPage = () => {
             )}
 
             <header className="flex items-center justify-between border-b-4 border-slate-100 px-12 py-6">
-               <div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Active Reading Quest</h2>
-                  <div className="flex items-center gap-3 mt-1">
-                    <div className={`h-2 w-2 rounded-full ${
-                      tracker.status === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
-                      tracker.status === 'error' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Active Reading Quest</h2>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className={`h-2 w-2 rounded-full ${tracker.status === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                    tracker.status === 'error' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'
                     }`} />
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${
-                      tracker.status === 'connected' ? 'text-emerald-600' : 
-                      tracker.status === 'error' ? 'text-rose-500' : 'text-amber-500'
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${tracker.status === 'connected' ? 'text-emerald-600' :
+                    tracker.status === 'error' ? 'text-rose-500' : 'text-amber-500'
                     }`}>
-                      {tracker.status === 'connected' ? 'Sensors Online & Recording' : 
-                       tracker.status === 'error' ? 'Tracker Offline (Check Port 43333)' : 
-                       'Syncing with GazePointer...'}
-                    </span>
+                    {tracker.status === 'connected' ? 'Sensors Online & Recording' :
+                      tracker.status === 'error' ? 'Tracker Offline (Check Port 43333)' :
+                        'Syncing with GazePointer...'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-10">
+                <div className="flex flex-col items-end">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Gaze Telemetry</p>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className={`h-1 w-5 rounded-full transition-colors ${tracker.samples.length > (i * 25) ? 'bg-sky-500' : 'bg-slate-200'}`} />
+                    ))}
                   </div>
-               </div>
-               <div className="flex items-center gap-10">
-                  <div className="flex flex-col items-end">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Gaze Telemetry</p>
-                    <div className="flex gap-1">
-                      {[1,2,3,4,5].map(i => (
-                        <div key={i} className={`h-1 w-5 rounded-full transition-colors ${tracker.samples.length > (i*25) ? 'bg-sky-500' : 'bg-slate-200'}`} />
-                      ))}
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setPhase("landing")}
-                    className="text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest border-b-2 border-transparent hover:border-rose-200 transition-all"
-                  >
-                    Abort
-                  </button>
-               </div>
+                </div>
+                <button
+                  onClick={() => setPhase("landing")}
+                  className="text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest border-b-2 border-transparent hover:border-rose-200 transition-all"
+                >
+                  Abort
+                </button>
+              </div>
             </header>
 
             <div className="flex-1 overflow-y-auto px-12 py-12 flex justify-center bg-[#fdfdfd]">
-              <motion.div 
+              <motion.div
                 ref={passageRef}
                 initial={{ opacity: 0.8 }}
                 animate={{ opacity: isRecording ? 1 : 0.8 }}
                 className={`w-full max-w-5xl card-clean p-24 bg-white relative transition-all duration-700 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] ${!isRecording ? 'blur-[2px] grayscale-[0.5]' : ''}`}
               >
                 {isRecording && (
-                   <div className="absolute top-10 left-10 flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
-                      <Activity className="w-4 h-4 animate-bounce" />
-                      Tracking Gaze
-                   </div>
+                  <div className="absolute top-10 left-10 flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+                    <Activity className="w-4 h-4 animate-bounce" />
+                    Tracking Gaze
+                  </div>
                 )}
-                
+
                 <div className="space-y-16 text-center text-[2.75rem] font-black leading-[2.6] text-slate-800 tracking-tight">
                   {passageParagraphs.map((paragraph, pi) => (
                     <p key={pi}>
                       {paragraph.map((word, wi) => {
                         const idx = pi * 100 + wi;
                         return (
-                          <span 
+                          <span
                             key={idx}
                             data-word-index={idx}
-                            className={`inline-block px-3 py-1 rounded-2xl transition-all duration-300 ${
-                              activeWordIndex === idx 
-                                ? 'bg-sky-100 text-sky-600 scale-110 ring-4 ring-sky-200 shadow-sm' 
-                                : 'hover:bg-slate-50'
-                            }`}
+                            className={`inline-block px-3 py-1 rounded-2xl transition-all duration-300 ${activeWordIndex === idx
+                              ? 'bg-sky-100 text-sky-600 scale-110 ring-4 ring-sky-200 shadow-sm'
+                              : 'hover:bg-slate-50'
+                              }`}
                           >
                             {word}{" "}
                           </span>
@@ -542,22 +526,22 @@ export const DiagnosticPage = () => {
 
                 {!isRecording && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-[2px] rounded-[3rem] z-20">
-                     <motion.div 
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="text-center bg-white p-12 rounded-[2.5rem] shadow-2xl border-2 border-slate-100"
-                     >
-                        <div className="h-24 w-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                           <PlayCircle className="w-16 h-16 text-emerald-500 animate-pulse" />
-                        </div>
-                        <h3 className="text-3xl font-black text-slate-900 leading-tight">Begin Quest</h3>
-                        <p className="text-slate-500 font-bold mt-2 max-w-xs mx-auto">Click the green <span className="text-emerald-500">Start</span> button on the left to begin your recording!</p>
-                        <div className="mt-8 flex items-center justify-center gap-4 text-slate-300">
-                           <Mic className="w-5 h-5" />
-                           <div className="h-1 w-1 bg-slate-300 rounded-full" />
-                           <Activity className="w-5 h-5" />
-                        </div>
-                     </motion.div>
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="text-center bg-white p-12 rounded-[2.5rem] shadow-2xl border-2 border-slate-100"
+                    >
+                      <div className="h-24 w-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <PlayCircle className="w-16 h-16 text-emerald-500 animate-pulse" />
+                      </div>
+                      <h3 className="text-3xl font-black text-slate-900 leading-tight">Begin Quest</h3>
+                      <p className="text-slate-500 font-bold mt-2 max-w-xs mx-auto">Click the green <span className="text-emerald-500">Start</span> button on the left to begin your recording!</p>
+                      <div className="mt-8 flex items-center justify-center gap-4 text-slate-300">
+                        <Mic className="w-5 h-5" />
+                        <div className="h-1 w-1 bg-slate-300 rounded-full" />
+                        <Activity className="w-5 h-5" />
+                      </div>
+                    </motion.div>
                   </div>
                 )}
               </motion.div>
@@ -583,11 +567,11 @@ export const DiagnosticPage = () => {
 
             {/* ── Countdown ── */}
             {phonicsState === "countdown" && countdown !== null && (
-              <motion.div 
-                key={`cd-${countdown}`} 
-                initial={{ scale: 0.5, opacity: 0 }} 
-                animate={{ scale: 1, opacity: 1 }} 
-                exit={{ scale: 2, opacity: 0 }} 
+              <motion.div
+                key={`cd-${countdown}`}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 2, opacity: 0 }}
                 transition={{ duration: 0.4 }}
                 className="text-center"
               >
@@ -673,10 +657,10 @@ export const DiagnosticPage = () => {
                         >
                           Tap each part to hear it, then say the whole word!
                         </motion.p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Progress dots */}
                 <div className="mt-10 flex justify-center gap-4">

@@ -1,10 +1,19 @@
 import json
 import os
+
+from dotenv import load_dotenv
 from groq import AsyncGroq
+
+from app.core.config import settings
 from app.stubs import phonetics
 
-# Initialize Groq client
-client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY", ""))
+
+def _get_client() -> AsyncGroq:
+    load_dotenv(override=True)
+    api_key = os.getenv("GROQ_API_KEY") or settings.groq_api_key
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY is not configured.")
+    return AsyncGroq(api_key=api_key)
 
 async def adapt(content: str, profile: dict[str, object]) -> dict[str, object]:
     """Use Groq AI to adapt and simplify reading content based on student profile."""
@@ -18,6 +27,9 @@ async def adapt(content: str, profile: dict[str, object]) -> dict[str, object]:
     
     Student Profile Context:
     - Reading Level: {profile.get('reading_level', 'Unknown')}
+    - Average Speed: {profile.get('avg_speed_wpm', 0)} WPM
+    - Average Accuracy: {profile.get('avg_accuracy_pct', 0)}%
+    - Attention Score: {profile.get('attention_score', 0)}
     - Difficult Words they struggle with: {', '.join(profile.get('difficult_words', []))}
     
     STRICT Formatting Rules:
@@ -42,6 +54,7 @@ async def adapt(content: str, profile: dict[str, object]) -> dict[str, object]:
     """
     
     try:
+        client = _get_client()
         completion = await client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],

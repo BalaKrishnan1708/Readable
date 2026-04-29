@@ -185,15 +185,32 @@ async def visualize_paragraph(
 
 @router.post("/diagnostic/phonics/transcribe")
 async def transcribe_phonics(
+    expected_word: str = Form(default=""),
     audio_file: UploadFile = File(...),
     current_user: User = Depends(require_role("student")),
-) -> dict[str, str]:
+) -> dict[str, object]:
     """
-    Transcribes a short audio clip for the phonics evaluation using Groq Whisper.
+    Transcribes a short audio clip for the phonics evaluation using local Whisper.
     """
     audio_bytes = await audio_file.read()
-    text = await llm.transcribe_audio(audio_bytes)
-    return {"text": text}
+    stt.prime_expected_text(expected_word)
+    text = await stt.transcribe_with_metadata(
+        audio_bytes,
+        filename=audio_file.filename or "phonics.webm",
+        content_type=audio_file.content_type,
+    )
+
+    result = {"text": text}
+
+    if expected_word:
+        target = _normalize_phonics_text(expected_word)
+        clean = _normalize_phonics_text(text)
+        is_match = bool(target) and clean == target
+        result["is_match"] = is_match
+        result["clean_text"] = clean
+        result["expected_text"] = target
+
+    return result
 
 
 async def _submit_session(
@@ -551,6 +568,14 @@ def _parse_eye_payload(eye_tracking_payload: str) -> dict[str, object]:
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _normalize_phonics_text(value: str) -> str:
+    normalized = "".join(
+        char.lower() if char.isalpha() or char.isspace() else " "
+        for char in value
+    )
+    return " ".join(normalized.split())
 
 
 def _normalize_focused_word_hits(value: object) -> list[FocusedWordHit]:

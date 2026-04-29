@@ -13,6 +13,10 @@ from app.services.content import DIAGNOSTIC_PASSAGE
 
 
 async def seed() -> None:
+    from app.core.database import engine, Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     async with AsyncSessionLocal() as db:
         for model in [ProgressEntry, SessionResult, Session, StudentProfile, Lesson, User]:
             await db.execute(delete(model))
