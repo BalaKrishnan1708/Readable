@@ -14,8 +14,8 @@ export const StudentDetailPage = () => {
 
   const stats = {
     accuracy_history: progress?.entries.map(e => ({
-      date: new Date(e.date).toLocaleDateString(),
-      accuracy: e.accuracy_pct
+      date: new Date(e.timestamp).toLocaleDateString(),
+      accuracy: e.accuracy_trend
     })) ?? [],
   };
 

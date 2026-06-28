@@ -741,7 +741,9 @@ export const LessonPage = () => {
                <FileText className="w-5 h-5 text-sky-600" />
             </div>
             <div className="flex flex-col min-w-0">
-              <h1 className="text-2xl font-black text-slate-900 truncate">{content.title || "Placeholder Lesson Name"}</h1>
+              <h1 className="text-2xl font-black text-slate-900 truncate">
+                {(content as { title?: string }).title || "Reading Lesson"}
+              </h1>
               <span className="text-sm font-bold text-slate-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
           </header>
@@ -889,9 +891,10 @@ export const LessonPage = () => {
                  </button>
 
                  <RecordButton
-                    isRecording={isRecording}
-                    setIsRecording={setIsRecording}
-                    onFinish={(file) => submitMutation.mutate(file)}
+                    label="Start Recording"
+                    onRecordingStateChange={setIsRecording}
+                    onAudioActivityChange={setIsSpeechSilent}
+                    onStop={(file: File) => submitMutation.mutate(file)}
                  />
               </div>
 

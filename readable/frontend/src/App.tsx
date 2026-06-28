@@ -18,11 +18,8 @@ import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { ReaderPage } from "./pages/ReaderPage";
 import { ImageGalleryPage } from "./pages/ImageGalleryPage";
 
-import { authStore } from "./stores/authStore";
-
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const role = authStore((state) => state.role);
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/";
   const isFullscreen = location.pathname === "/reader";
 
@@ -46,7 +43,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
   const isLessonPage = location.pathname.startsWith("/lesson/");
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-sky-100 selection:text-sky-900 transition-colors duration-500 bg-grid-pattern">
+    <div className="min-h-screen bg-grid-pattern text-slate-900 transition-colors duration-500">
       {!isAuthPage && <Navbar />}
       <main className={`mx-auto py-8 ${isLessonPage ? 'w-full px-2 sm:px-4' : 'max-w-7xl px-4 sm:px-6 lg:px-8'}`}>
         <AnimatePresence mode="wait">
@@ -82,11 +79,11 @@ function App() {
           <Route path="/diagnostic" element={<DiagnosticPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/planets" element={<PlanetLessonPage />} />
+          <Route path="/lesson/3" element={<ImageGalleryPage />} />
           <Route path="/lesson/:id" element={<LessonPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/students/:id" element={<StudentDetailPage />} />
           <Route path="/reader" element={<ReaderPage />} />
-          <Route path="/gallery" element={<ImageGalleryPage />} />
         </Routes>
       </AppShell>
       <Toaster 

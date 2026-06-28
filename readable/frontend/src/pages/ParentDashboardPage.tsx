@@ -36,7 +36,7 @@ export const ParentDashboardPage = () => {
             Parent Portal
           </span>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-            Welcome back, {user?.name?.split(" ")[0] || "Parent"}!
+            Welcome back, {user?.email?.split("@")[0] || "Parent"}!
           </h1>
           <p className="mt-2 text-lg font-bold text-slate-500">
             Here's how your explorers are doing.

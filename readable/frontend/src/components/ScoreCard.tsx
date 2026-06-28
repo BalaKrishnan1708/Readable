@@ -1,4 +1,5 @@
 import { motion, Variants } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Target, Zap, Brain, X } from "lucide-react";
 import type { SessionResult } from "../types/session";
 import type { StudentProfile } from "../types/profile";

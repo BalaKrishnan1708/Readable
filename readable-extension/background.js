@@ -11,7 +11,7 @@ const READER_PAGE = "http://localhost:5173/reader";
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "readable-send",
-    title: "📖 Open in Readable",
+    title: "Open in Readable",
     contexts: ["selection"],
   });
 });

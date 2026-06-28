@@ -37,36 +37,37 @@ function initFloatingWidget() {
   floatingWidget.style.bottom = '30px';
   floatingWidget.style.right = '30px';
   floatingWidget.style.zIndex = '2147483645'; // Just under the sidebar overlay
-  floatingWidget.style.width = '56px';
-  floatingWidget.style.height = '56px';
+  floatingWidget.style.width = '58px';
+  floatingWidget.style.height = '58px';
 
   shadow.innerHTML = `
     <style>
       .widget {
         width: 100%;
         height: 100%;
-        background: #0ea5e9;
-        border-radius: 50%;
-        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+        background: linear-gradient(135deg, #0ea5e9, #14b8a6 55%, #fb923c);
+        border-radius: 18px;
+        box-shadow: 0 18px 36px -20px rgba(15, 23, 42, 0.75);
         cursor: grab;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 24px;
+        font: 900 24px/1 'Outfit', system-ui, sans-serif;
         transition: transform 0.2s, box-shadow 0.2s;
         user-select: none;
+        border: 1px solid rgba(255, 255, 255, 0.45);
       }
       .widget:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 16px rgba(14, 165, 233, 0.5);
+        transform: translateY(-2px) scale(1.03);
+        box-shadow: 0 24px 44px -22px rgba(15, 23, 42, 0.85);
       }
       .widget:active {
         cursor: grabbing;
         transform: scale(0.95);
       }
     </style>
-    <div class="widget" title="Open Readable">📖</div>
+    <div class="widget" title="Open Readable">R</div>
   `;
 
   document.documentElement.appendChild(floatingWidget);
@@ -99,8 +100,8 @@ function initFloatingWidget() {
     // Apply position (convert from right/bottom to left/top for easier dragging)
     floatingWidget.style.right = 'auto';
     floatingWidget.style.bottom = 'auto';
-    floatingWidget.style.left = \`\${newX}px\`;
-    floatingWidget.style.top = \`\${newY}px\`;
+    floatingWidget.style.left = `${newX}px`;
+    floatingWidget.style.top = `${newY}px`;
   };
 
   const onMouseUp = (e) => {
@@ -152,7 +153,7 @@ function toggleSidebar() {
   sidebarContainer.style.position = 'fixed';
   sidebarContainer.style.top = '0';
   sidebarContainer.style.right = '0';
-  sidebarContainer.style.width = '450px';
+  sidebarContainer.style.width = 'min(460px, calc(100vw - 16px))';
   sidebarContainer.style.height = '100vh';
   sidebarContainer.style.zIndex = '2147483647'; // Max z-index
   sidebarContainer.style.transform = 'translateX(100%)'; // Start off-screen
@@ -170,20 +171,21 @@ function toggleSidebar() {
       .sidebar {
         width: 100%;
         height: 100%;
-        background: #ffffff;
-        box-shadow: -20px 0 50px rgba(15, 23, 42, 0.15);
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+        box-shadow: -30px 0 70px -35px rgba(15, 23, 42, 0.55);
         font-family: 'Outfit', system-ui, -apple-system, sans-serif;
         display: flex;
         flex-direction: column;
-        border-left: 1px solid rgba(0,0,0,0.05);
+        border-left: 1px solid rgba(148, 163, 184, 0.32);
       }
       .header {
-        background: linear-gradient(to right, #f8fafc, #ffffff);
+        background: #0f172a;
         padding: 32px;
-        border-bottom: 2px solid #f1f5f9;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
         display: flex;
         align-items: center;
         justify-content: space-between;
+        color: white;
       }
       .title-group {
         display: flex;
@@ -193,28 +195,29 @@ function toggleSidebar() {
       .logo {
         width: 44px;
         height: 44px;
-        background: linear-gradient(135deg, #0ea5e9, #6366f1);
-        border-radius: 12px;
+        background: linear-gradient(135deg, #0ea5e9, #14b8a6 55%, #fb923c);
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 20px;
-        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        font-size: 22px;
+        font-weight: 900;
+        box-shadow: 0 18px 35px -22px rgba(56, 189, 248, 0.8);
       }
       .title {
         font-size: 1.5rem;
         font-weight: 900;
-        color: #0f172a;
+        color: #ffffff;
         margin: 0;
         letter-spacing: -0.02em;
       }
       .close-btn {
-        background: #f1f5f9;
+        background: rgba(255, 255, 255, 0.1);
         border: none;
         font-size: 1.25rem;
         cursor: pointer;
-        color: #64748b;
+        color: #dbeafe;
         border-radius: 12px;
         width: 40px;
         height: 40px;
@@ -226,22 +229,22 @@ function toggleSidebar() {
       .close-btn:hover { background: #e2e8f0; color: #0f172a; transform: rotate(90deg); }
       
       .content {
-        padding: 32px;
+        padding: 24px;
         flex-grow: 1;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 18px;
       }
       .card {
         background: #ffffff;
-        border: 2px solid #f1f5f9;
-        border-radius: 24px;
-        padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 22px;
+        box-shadow: 0 18px 45px -34px rgba(15, 23, 42, 0.45);
         transition: 0.3s;
       }
-      .card:hover { border-color: #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+      .card:hover { border-color: #bae6fd; box-shadow: 0 24px 55px -36px rgba(14, 165, 233, 0.55); }
       
       .card-title {
         font-size: 0.8rem;
@@ -293,7 +296,7 @@ function toggleSidebar() {
       .color-swatch.active { border-color: #0ea5e9; transform: scale(1.1); }
       
       .action-btn {
-        width: 100%; padding: 20px; background: #0ea5e9; color: white;
+        width: 100%; padding: 18px; background: #0ea5e9; color: white;
         border: none; border-radius: 20px; font-weight: 900; font-size: 1.1rem;
         cursor: pointer; box-shadow: 0 6px 0 0 #0284c7; transition: 0.1s;
         margin-top: auto;
@@ -307,7 +310,7 @@ function toggleSidebar() {
     <div class="sidebar">
       <div class="header">
         <div class="title-group">
-          <div class="logo">📖</div>
+          <div class="logo">R</div>
           <h2 class="title">Readable</h2>
         </div>
         <button class="close-btn">&times;</button>
@@ -357,7 +360,7 @@ function toggleSidebar() {
         </div>
 
         <button class="action-btn">
-          <span>✨</span> Analyze Complexity
+          <span>AI</span> Analyze Complexity
         </button>
       </div>
     </div>
@@ -617,9 +620,8 @@ function toggleSidebar() {
       shadow.appendChild(style);
       
       btn.parentNode.insertBefore(resultCard, btn.nextSibling);
-      btn.innerText = "Analysis Complete! ✅";
+      btn.innerText = "Analysis Complete";
       btn.style.background = "#059669";
     }, 1200);
   });
 }
-

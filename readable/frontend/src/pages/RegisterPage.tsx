@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
 import { register } from "../api/auth";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -98,9 +99,10 @@ export const RegisterPage = () => {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="btn-3d w-full rounded-2xl bg-emerald-500 border-emerald-600 py-5 text-xl font-black text-white hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 mt-4"
+              className="btn-3d mt-4 flex w-full items-center justify-center gap-3 rounded-2xl border-emerald-600 bg-emerald-500 py-5 text-xl font-black text-white hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50"
             >
-              {mutation.isPending ? "Creating account..." : "Start Adventure! →"}
+              {mutation.isPending ? "Creating account..." : "Start Adventure"}
+              {!mutation.isPending && <ArrowRight className="h-5 w-5" />}
             </button>
           </form>
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Rocket, Target, Zap, BookOpen, TrendingUp, Sparkles, Star } from "lucide-react";
+import { Flame, Rocket, Target, Zap, BookOpen, TrendingUp, Sparkles, Star } from "lucide-react";
 import { profileStore } from "../stores/profileStore";
 import { authStore } from "../stores/authStore";
 import { ProgressChart } from "../components/ProgressChart";
@@ -37,8 +37,8 @@ export const ProgressPage = () => {
     words_mastered: Math.round((profile?.avg_accuracy_pct ?? 92) * 1.5),
     avg_accuracy_pct: profile?.avg_accuracy_pct ?? 94,
     accuracy_history: progress?.entries?.length ? progress.entries.map(e => ({
-      date: new Date(e.date).toLocaleDateString(),
-      accuracy: e.accuracy_pct
+      date: new Date(e.timestamp).toLocaleDateString(),
+      accuracy: e.accuracy_trend
     })) : [
       { date: "Mon", accuracy: 82 },
       { date: "Tue", accuracy: 88 },
@@ -122,7 +122,9 @@ export const ProgressPage = () => {
             <div className="bg-white rounded-2xl border-2 border-indigo-100 p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Current Streak</p>
-                <div className="text-4xl font-black text-indigo-600">5 Days 🔥</div>
+                <div className="flex items-center gap-3 text-4xl font-black text-indigo-600">
+                  5 Days <Flame className="h-8 w-8 text-orange-500" />
+                </div>
               </div>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5, 6, 7].map((day) => (
